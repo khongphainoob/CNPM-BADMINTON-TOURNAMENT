@@ -1,0 +1,62 @@
+import type React from 'react'
+
+type IconProps = {
+  name: string
+  size?: number
+  stroke?: number
+  style?: React.CSSProperties
+  color?: string
+}
+
+export default function Icon({ name, size = 16, stroke = 1.6, style }: IconProps) {
+  const p = {
+    width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
+    stroke: 'currentColor', strokeWidth: stroke, strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const, style,
+  }
+  const paths: Record<string, React.ReactNode> = {
+    dashboard:    <><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></>,
+    trophy:       <><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3"/><path d="M7 5H4v2a3 3 0 0 0 3 3"/></>,
+    court:        <><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M12 5v14"/><path d="M3 12h18"/><path d="M7 8v8"/><path d="M17 8v8"/></>,
+    calendar:     <><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18"/><path d="M8 2v4M16 2v4"/></>,
+    user:         <><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,
+    users:        <><circle cx="9" cy="8" r="3.5"/><path d="M2 20a7 7 0 0 1 14 0"/><circle cx="17" cy="7" r="3"/><path d="M17 13a6 6 0 0 1 5 7"/></>,
+    bracket:      <><path d="M3 5h5l4 4"/><path d="M3 19h5l4-4"/><path d="M12 9v6"/><path d="M12 12h5"/><path d="M17 6h4v12h-4"/></>,
+    bell:         <><path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16z"/><path d="M10 20a2 2 0 0 0 4 0"/></>,
+    wallet:       <><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M16 13h3"/><path d="M2 10h20"/></>,
+    chart:        <><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="4" width="3" height="14"/></>,
+    box:          <><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4"/><path d="M12 11v10"/></>,
+    search:       <><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></>,
+    filter:       <><path d="M3 5h18l-7 8v6l-4-2v-4z"/></>,
+    check:        <path d="m4 12 5 5 11-12"/>,
+    x:            <><path d="M6 6l12 12"/><path d="M6 18L18 6"/></>,
+    plus:         <><path d="M12 5v14"/><path d="M5 12h14"/></>,
+    chevR:        <path d="m9 6 6 6-6 6"/>,
+    chevL:        <path d="m15 6-6 6 6 6"/>,
+    chevD:        <path d="m6 9 6 6 6-6"/>,
+    ticket:       <><path d="M2 9a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"/><path d="M12 7v10" strokeDasharray="2 2"/></>,
+    wifi:         <><path d="M2 9a16 16 0 0 1 20 0"/><path d="M5 13a11 11 0 0 1 14 0"/><path d="M8.5 17a6 6 0 0 1 7 0"/><circle cx="12" cy="20" r="0.8" fill="currentColor"/></>,
+    shield:       <><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></>,
+    globe:        <><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></>,
+    shuttle:      <><circle cx="12" cy="16" r="3"/><path d="M12 13V4l-4 6"/><path d="M12 4l4 6"/><path d="M12 4l-2 9"/><path d="M12 4l2 9"/></>,
+    dl:           <><path d="M12 4v12"/><path d="m7 11 5 5 5-5"/><path d="M4 20h16"/></>,
+    menu:         <><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></>,
+    cog:          <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></>,
+    pdf:          <><path d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M14 2v5h6"/></>,
+    clock:        <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></>,
+    'arrow-left': <><path d="m19 12H5"/><path d="m11 6-6 6 6 6"/></>,
+    'log-out':    <><path d="M9 21H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></>,
+    'user-check': <><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="m17 11 2 2 4-4"/></>,
+    'map-pin':    <><path d="M12 21s-8-7.3-8-13a8 8 0 1 1 16 0c0 5.7-8 13-8 13z"/><circle cx="12" cy="8" r="2.5"/></>,
+    package:      <><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4"/><path d="M12 11v10"/><path d="M7.5 9.5l9-4"/></>,
+    clipboard:    <><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></>,
+    'dollar-sign': <><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>,
+    newspaper:    <><path d="M4 3h16a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></>,
+    'bar-chart-2': <><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="4" width="3" height="14"/></>,
+    settings:     <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></>,
+    'layout-dashboard': <><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></>,
+    'git-branch': <><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v1a3 3 0 0 0 3 3h6a3 3 0 0 1 3 3"/><line x1="6" y1="9" x2="6" y2="21"/></>,
+    info:         <><circle cx="12" cy="12" r="9"/><path d="M12 8v1"/><path d="M12 11v5"/></>,
+  }
+  return <svg {...p}>{paths[name] ?? null}</svg>
+}
