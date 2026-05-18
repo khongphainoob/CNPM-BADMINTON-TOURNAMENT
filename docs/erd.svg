@@ -1,0 +1,291 @@
+<svg viewBox="0 0 1200 820" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="11">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .entity { fill: #ffffff; stroke: #0f172a; stroke-width: 1.5; }
+      .header { fill: #0f172a; }
+      .header-text { fill: #ffffff; font-weight: 600; font-size: 12px; }
+      .pk { fill: #0ea5e9; font-weight: 700; }
+      .fk { fill: #9333ea; }
+      .rel { stroke: #475569; stroke-width: 1.2; fill: none; }
+      .rel-label { fill: #475569; font-size: 10px; font-style: italic; }
+      .junction { fill: #fef3c7; stroke: #ca8a04; }
+    </style>
+  </defs>
+
+  <text x="600" y="22" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">ERD — CNPM Badminton Tournament</text>
+  <text x="600" y="38" text-anchor="middle" font-size="11" fill="#64748b">PK · FK · entities màu vàng nhạt = bảng nối N–N</text>
+
+  <!-- USER -->
+  <g>
+    <rect class="entity" x="40" y="70" width="170" height="120" rx="4"/>
+    <rect class="header" x="40" y="70" width="170" height="22" rx="4"/>
+    <text class="header-text" x="125" y="86" text-anchor="middle">users</text>
+    <text x="50" y="108"><tspan class="pk">PK</tspan> id</text>
+    <text x="50" y="124">email UNIQUE</text>
+    <text x="50" y="138">password_hash</text>
+    <text x="50" y="152">name, phone</text>
+    <text x="50" y="166">role ENUM</text>
+    <text x="50" y="180">status ENUM</text>
+  </g>
+
+  <!-- TOURNAMENT -->
+  <g>
+    <rect class="entity" x="510" y="70" width="170" height="120" rx="4"/>
+    <rect class="header" x="510" y="70" width="170" height="22" rx="4"/>
+    <text class="header-text" x="595" y="86" text-anchor="middle">tournaments</text>
+    <text x="520" y="108"><tspan class="pk">PK</tspan> id</text>
+    <text x="520" y="124">name, venue</text>
+    <text x="520" y="138">start_date, end_date</text>
+    <text x="520" y="152">status, format</text>
+    <text x="520" y="166">budget, revenue</text>
+  </g>
+
+  <!-- CATEGORY -->
+  <g>
+    <rect class="entity" x="980" y="70" width="170" height="80" rx="4"/>
+    <rect class="header" x="980" y="70" width="170" height="22" rx="4"/>
+    <text class="header-text" x="1065" y="86" text-anchor="middle">categories</text>
+    <text x="990" y="108"><tspan class="pk">PK</tspan> code (MS/WS/MD…)</text>
+    <text x="990" y="124">label</text>
+    <text x="990" y="138">is_doubles BOOL</text>
+  </g>
+
+  <!-- CLUB -->
+  <g>
+    <rect class="entity" x="40" y="240" width="170" height="70" rx="4"/>
+    <rect class="header" x="40" y="240" width="170" height="22" rx="4"/>
+    <text class="header-text" x="125" y="256" text-anchor="middle">clubs</text>
+    <text x="50" y="278"><tspan class="pk">PK</tspan> id</text>
+    <text x="50" y="294">name UNIQUE, province</text>
+  </g>
+
+  <!-- ATHLETE -->
+  <g>
+    <rect class="entity" x="275" y="220" width="180" height="135" rx="4"/>
+    <rect class="header" x="275" y="220" width="180" height="22" rx="4"/>
+    <text class="header-text" x="365" y="236" text-anchor="middle">athletes</text>
+    <text x="285" y="258"><tspan class="pk">PK</tspan> id</text>
+    <text x="285" y="272"><tspan class="fk">FK</tspan> user_id (NULL)</text>
+    <text x="285" y="286"><tspan class="fk">FK</tspan> club_id</text>
+    <text x="285" y="300">name, gender, dob</text>
+    <text x="285" y="314">rating, tier</text>
+    <text x="285" y="328">status, note</text>
+  </g>
+
+  <!-- TOURNAMENT_REGISTRATION (junction) -->
+  <g>
+    <rect class="entity junction" x="515" y="240" width="170" height="100" rx="4"/>
+    <rect class="header" x="515" y="240" width="170" height="22" rx="4"/>
+    <text class="header-text" x="600" y="256" text-anchor="middle">tournament_registrations</text>
+    <text x="525" y="278"><tspan class="fk">FK</tspan> tournament_id</text>
+    <text x="525" y="292"><tspan class="fk">FK</tspan> athlete_id</text>
+    <text x="525" y="306"><tspan class="fk">FK</tspan> category_code</text>
+    <text x="525" y="320">seed (NULL)</text>
+  </g>
+
+  <!-- TEAM -->
+  <g>
+    <rect class="entity" x="755" y="220" width="170" height="120" rx="4"/>
+    <rect class="header" x="755" y="220" width="170" height="22" rx="4"/>
+    <text class="header-text" x="840" y="236" text-anchor="middle">teams</text>
+    <text x="765" y="258"><tspan class="pk">PK</tspan> id</text>
+    <text x="765" y="272"><tspan class="fk">FK</tspan> tournament_id</text>
+    <text x="765" y="286"><tspan class="fk">FK</tspan> category_code</text>
+    <text x="765" y="300">display_name</text>
+    <text x="765" y="314">seed</text>
+  </g>
+
+  <!-- TEAM_MEMBERS (junction) -->
+  <g>
+    <rect class="entity junction" x="980" y="220" width="170" height="80" rx="4"/>
+    <rect class="header" x="980" y="220" width="170" height="22" rx="4"/>
+    <text class="header-text" x="1065" y="236" text-anchor="middle">team_members</text>
+    <text x="990" y="258"><tspan class="fk">FK</tspan> team_id</text>
+    <text x="990" y="272"><tspan class="fk">FK</tspan> athlete_id</text>
+    <text x="990" y="286" font-size="10" fill="#64748b">1 row = đơn, 2 = đôi</text>
+  </g>
+
+  <!-- COURT -->
+  <g>
+    <rect class="entity" x="40" y="400" width="170" height="100" rx="4"/>
+    <rect class="header" x="40" y="400" width="170" height="22" rx="4"/>
+    <text class="header-text" x="125" y="416" text-anchor="middle">courts</text>
+    <text x="50" y="438"><tspan class="pk">PK</tspan> id</text>
+    <text x="50" y="452"><tspan class="fk">FK</tspan> tournament_id</text>
+    <text x="50" y="466">label, floor</text>
+    <text x="50" y="480">status ENUM</text>
+  </g>
+
+  <!-- REFEREE -->
+  <g>
+    <rect class="entity" x="275" y="400" width="180" height="100" rx="4"/>
+    <rect class="header" x="275" y="400" width="180" height="22" rx="4"/>
+    <text class="header-text" x="365" y="416" text-anchor="middle">referees</text>
+    <text x="285" y="438"><tspan class="pk">PK</tspan> id</text>
+    <text x="285" y="452"><tspan class="fk">FK</tspan> user_id (NULL)</text>
+    <text x="285" y="466">name, cert ENUM</text>
+    <text x="285" y="480">phone</text>
+  </g>
+
+  <!-- MATCH -->
+  <g>
+    <rect class="entity" x="515" y="395" width="195" height="180" rx="4"/>
+    <rect class="header" x="515" y="395" width="195" height="22" rx="4"/>
+    <text class="header-text" x="612" y="411" text-anchor="middle">matches</text>
+    <text x="525" y="433"><tspan class="pk">PK</tspan> id</text>
+    <text x="525" y="447"><tspan class="fk">FK</tspan> tournament_id</text>
+    <text x="525" y="461"><tspan class="fk">FK</tspan> category_code</text>
+    <text x="525" y="475"><tspan class="fk">FK</tspan> team_a_id</text>
+    <text x="525" y="489"><tspan class="fk">FK</tspan> team_b_id</text>
+    <text x="525" y="503"><tspan class="fk">FK</tspan> court_id (NULL)</text>
+    <text x="525" y="517"><tspan class="fk">FK</tspan> referee_id (NULL)</text>
+    <text x="525" y="531">round, scheduled_at</text>
+    <text x="525" y="545">status, winner_team_id</text>
+  </g>
+
+  <!-- MATCH_SET -->
+  <g>
+    <rect class="entity" x="755" y="395" width="170" height="115" rx="4"/>
+    <rect class="header" x="755" y="395" width="170" height="22" rx="4"/>
+    <text class="header-text" x="840" y="411" text-anchor="middle">match_sets</text>
+    <text x="765" y="433"><tspan class="pk">PK</tspan> id</text>
+    <text x="765" y="447"><tspan class="fk">FK</tspan> match_id</text>
+    <text x="765" y="461">set_no</text>
+    <text x="765" y="475">score_a, score_b</text>
+    <text x="765" y="489">winner ENUM</text>
+  </g>
+
+  <!-- SCORE_EVENT -->
+  <g>
+    <rect class="entity" x="980" y="395" width="170" height="135" rx="4"/>
+    <rect class="header" x="980" y="395" width="170" height="22" rx="4"/>
+    <text class="header-text" x="1065" y="411" text-anchor="middle">score_events</text>
+    <text x="990" y="433"><tspan class="pk">PK</tspan> id</text>
+    <text x="990" y="447"><tspan class="fk">FK</tspan> match_id</text>
+    <text x="990" y="461">set_no, scorer</text>
+    <text x="990" y="475">prev_score_a/b</text>
+    <text x="990" y="489">prev_serving</text>
+    <text x="990" y="503">caused_set_end</text>
+    <text x="990" y="517">created_at (for UNDO)</text>
+  </g>
+
+  <!-- INVENTORY -->
+  <g>
+    <rect class="entity" x="40" y="585" width="170" height="100" rx="4"/>
+    <rect class="header" x="40" y="585" width="170" height="22" rx="4"/>
+    <text class="header-text" x="125" y="601" text-anchor="middle">inventory_items</text>
+    <text x="50" y="623"><tspan class="pk">PK</tspan> sku</text>
+    <text x="50" y="637">name</text>
+    <text x="50" y="651">stock, min_stock, issued</text>
+    <text x="50" y="665">status (computed)</text>
+  </g>
+
+  <!-- INV_ISSUE -->
+  <g>
+    <rect class="entity" x="275" y="585" width="180" height="100" rx="4"/>
+    <rect class="header" x="275" y="585" width="180" height="22" rx="4"/>
+    <text class="header-text" x="365" y="601" text-anchor="middle">inventory_issues</text>
+    <text x="285" y="623"><tspan class="pk">PK</tspan> id</text>
+    <text x="285" y="637"><tspan class="fk">FK</tspan> sku, match_id (NULL)</text>
+    <text x="285" y="651"><tspan class="fk">FK</tspan> issued_by</text>
+    <text x="285" y="665">qty, issued_at</text>
+  </g>
+
+  <!-- TRANSACTION -->
+  <g>
+    <rect class="entity" x="515" y="615" width="195" height="100" rx="4"/>
+    <rect class="header" x="515" y="615" width="195" height="22" rx="4"/>
+    <text class="header-text" x="612" y="631" text-anchor="middle">transactions</text>
+    <text x="525" y="653"><tspan class="pk">PK</tspan> id</text>
+    <text x="525" y="667"><tspan class="fk">FK</tspan> tournament_id, created_by</text>
+    <text x="525" y="681">ts, description, category</text>
+    <text x="525" y="695">amount BIGINT</text>
+  </g>
+
+  <!-- NEWS -->
+  <g>
+    <rect class="entity" x="755" y="585" width="170" height="100" rx="4"/>
+    <rect class="header" x="755" y="585" width="170" height="22" rx="4"/>
+    <text class="header-text" x="840" y="601" text-anchor="middle">news</text>
+    <text x="765" y="623"><tspan class="pk">PK</tspan> id</text>
+    <text x="765" y="637"><tspan class="fk">FK</tspan> tournament_id (NULL)</text>
+    <text x="765" y="651"><tspan class="fk">FK</tspan> created_by</text>
+    <text x="765" y="665">title, body, tag, published_at</text>
+  </g>
+
+  <!-- ACTIVITY LOG -->
+  <g>
+    <rect class="entity" x="980" y="585" width="170" height="115" rx="4"/>
+    <rect class="header" x="980" y="585" width="170" height="22" rx="4"/>
+    <text class="header-text" x="1065" y="601" text-anchor="middle">activity_log</text>
+    <text x="990" y="623"><tspan class="pk">PK</tspan> id</text>
+    <text x="990" y="637"><tspan class="fk">FK</tspan> actor_user_id</text>
+    <text x="990" y="651">action, target_type</text>
+    <text x="990" y="665">target_id, message</text>
+    <text x="990" y="679">created_at</text>
+  </g>
+
+  <!-- RELATIONS -->
+  <!-- users → athletes (1-N optional) -->
+  <path class="rel" d="M210 150 C 240 150 245 250 275 270" marker-end="url(#arrow)"/>
+  <text class="rel-label" x="220" y="200">0..1</text>
+
+  <!-- clubs → athletes -->
+  <path class="rel" d="M210 275 L 275 285" marker-end="url(#arrow)"/>
+  <text class="rel-label" x="225" y="270">1..N</text>
+
+  <!-- tournaments → registrations -->
+  <path class="rel" d="M595 190 L 595 240" marker-end="url(#arrow)"/>
+  <!-- athletes → registrations -->
+  <path class="rel" d="M455 280 L 515 280" marker-end="url(#arrow)"/>
+  <!-- categories → registrations -->
+  <path class="rel" d="M980 110 C 850 130 720 230 685 280" marker-end="url(#arrow)"/>
+
+  <!-- tournaments → teams -->
+  <path class="rel" d="M680 130 C 740 150 800 200 810 220" marker-end="url(#arrow)"/>
+  <!-- teams → team_members -->
+  <path class="rel" d="M925 260 L 980 255" marker-end="url(#arrow)"/>
+  <!-- athletes → team_members -->
+  <path class="rel" d="M455 270 C 700 260 900 260 980 270" marker-end="url(#arrow)"/>
+
+  <!-- tournaments → matches -->
+  <path class="rel" d="M595 190 L 595 395" marker-end="url(#arrow)"/>
+  <!-- teams → matches (a, b) -->
+  <path class="rel" d="M790 340 L 680 395" marker-end="url(#arrow)"/>
+  <text class="rel-label" x="700" y="370">teamA/B</text>
+  <!-- categories → matches -->
+  <path class="rel" d="M1065 150 C 900 200 750 350 710 460" marker-end="url(#arrow)"/>
+
+  <!-- courts → matches -->
+  <path class="rel" d="M210 450 L 515 485" marker-end="url(#arrow)"/>
+  <!-- referees → matches -->
+  <path class="rel" d="M455 470 L 515 520" marker-end="url(#arrow)"/>
+  <!-- users → referees -->
+  <path class="rel" d="M125 190 C 180 280 220 380 285 430" marker-end="url(#arrow)"/>
+
+  <!-- matches → match_sets -->
+  <path class="rel" d="M710 460 L 755 455" marker-end="url(#arrow)"/>
+  <!-- matches → score_events -->
+  <path class="rel" d="M710 510 C 850 510 920 470 980 460" marker-end="url(#arrow)"/>
+
+  <!-- inventory → issues -->
+  <path class="rel" d="M210 630 L 275 630" marker-end="url(#arrow)"/>
+  <!-- issues → matches -->
+  <path class="rel" d="M365 585 L 612 575" marker-end="url(#arrow)"/>
+
+  <!-- tournaments → transactions / news -->
+  <path class="rel" d="M610 190 C 610 400 612 615 612 615" marker-end="url(#arrow)" stroke-dasharray="3,2"/>
+  <!-- users → activity_log -->
+  <path class="rel" d="M125 190 C 125 600 980 640 990 640" marker-end="url(#arrow)" stroke-dasharray="3,2"/>
+
+  <!-- Legend -->
+  <g transform="translate(40, 740)">
+    <rect width="320" height="60" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="10" y="18" font-weight="600">Chú giải</text>
+    <text x="10" y="34"><tspan class="pk">PK</tspan> = Primary Key · <tspan class="fk">FK</tspan> = Foreign Key</text>
+    <text x="10" y="50">Hộp vàng = bảng nối N–N · Mũi tên = N → 1</text>
+  </g>
+</svg>
