@@ -2,7 +2,8 @@
 
 > Bản cập nhật theo cấu trúc **8 module** thống nhất với plan của nhóm.
 > Stack: **PostgreSQL 16 + Prisma** (đề xuất; có thể đổi sang Knex nếu giáo viên yêu cầu SQL tay).
-> File DDL SQL đầy đủ: `docs/schema.sql`. Seed dữ liệu mẫu: `docs/seed.sql`.
+> File DDL SQL đầy đủ: `back-end/db/schema.sql`. Seed dữ liệu mẫu: `back-end/db/seed.sql`.
+> Thư mục `docs/` chỉ giữ tài liệu/ERD/API docs; SQL chạy thật đặt trong `back-end/db/`.
 
 ---
 
@@ -380,6 +381,7 @@ Tầng vận hành:     matches → inventory_issues; users → news; users/matc
 
 ## 14. Bước tiếp theo
 
-- (a) `docs/schema.sql` đã viết sẵn DDL cho toàn bộ 28 bảng → import vào pgAdmin để xem.
-- (b) `docs/seed.sql` chứa dữ liệu mẫu rút từ `legacy.ts` của front-end.
-- (c) Khi nhóm thống nhất, mình có thể chuyển sang Prisma schema và migration.
+- (a) `back-end/db/schema.sql` đã viết sẵn DDL cho toàn bộ 28 bảng → import vào pgAdmin để xem.
+- (b) `back-end/db/seed.sql` chứa dữ liệu mẫu rút từ `legacy.ts` của front-end.
+- (c) SQL chạy thật được tách khỏi `docs/`; thư mục này chỉ giữ tài liệu/ERD/API docs.
+- (d) Khi nhóm thống nhất, mình có thể chuyển sang Prisma schema và migration.
