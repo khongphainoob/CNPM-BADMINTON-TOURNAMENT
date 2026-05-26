@@ -5,7 +5,7 @@ Dự án này là một ứng dụng Full-stack cơ bản bao gồm Front-end x�
 ## 🚀 Công nghệ sử dụng
 
 - **Front-end**: React 19, TypeScript, Vite, Tailwind CSS v4, Axios.
-- **Back-end**: Node.js, Express.js, CORS (ES Modules).
+- **Back-end**: Node.js, Express.js, CORS (ES Modules), Zod.
 
 ## 📁 Cấu trúc thư mục
 
