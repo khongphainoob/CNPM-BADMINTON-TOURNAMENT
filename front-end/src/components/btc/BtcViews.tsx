@@ -1,10 +1,20 @@
 import { useState, useMemo } from 'react'
+import RegistrationHubView from '../../features/registration/RegistrationHubView'
+import ArticleEditor from '../../features/cms/ArticleEditor'
+import LegalReportModal from '../../features/reports/LegalReportModal'
+import MatchAuditLogView from '../../features/tournament/MatchAuditLogView'
+import LeaderboardView from '../../features/tournament/LeaderboardView'
 import Icon from '../shared/Icon'
 import Modal from '../shared/Modal'
 import { useToast } from '../shared/Toast'
 import { btnGhost, btnPrimary, money } from '../shared/tokens'
 import { useBtcNav } from './BtcApp'
-import { CATEGORIES } from '../../data/legacy'
+import { CATEGORIES } from '../../data/constants'
+export { CourtsView } from '../../features/tournament/CourtsView'
+export { BracketView } from '../../features/tournament/BracketView'
+export { ScheduleView } from '../../features/tournament/ScheduleView'
+export { SettingsView } from '../../features/tournament/SettingsView'
+export { FinanceView } from '../../features/finance/FinanceView'
 import {
   useStore,
   addMatch, addStock, addNewInventoryItem, issueShuttles,
@@ -13,7 +23,8 @@ import {
   updateTournamentName, updateTournamentVenue,
   type InventoryItem, type Referee,
 } from '../../data/store'
-import type { LiveMatch, Athlete } from '../../data/legacy'
+import { tournamentApi } from '../../data/api'
+import type { LiveMatch, Athlete } from '../../data/constants'
 
 // ── Shared sub-components ────────────────────────────────────────────────────
 
@@ -247,13 +258,19 @@ function AssignRefereeModal({ referee, onClose }: { referee: Referee; onClose: (
     ...upcomingMatches.map(m => ({ id: m.id, label: `#${m.id} · ${m.t} · ${m.a} vs ${m.b}` })),
   ]
   const [matchId, setMatchId] = useState<number | ''>(allMatches[0]?.id ?? '')
+  const [role, setRole] = useState('main')
 
   const submit = () => {
     if (!matchId) { toast('Chọn trận đấu.', 'error'); return }
-    assignReferee(referee.id, Number(matchId))
-    toast(`Đã phân công ${referee.name} cho trận #${matchId}`)
+    if (referee.assigned >= 4) {
+      if (!confirm('Cảnh báo: Trọng tài này đã phân công 4 trận. Bạn có chắc chắn muốn tiếp tục?')) return
+    }
+    assignReferee(referee.id, Number(matchId)) // Assume API accepts role in future
+    toast(`Đã phân công ${referee.name} làm ${role === 'main' ? 'Trọng tài chính' : role === 'line' ? 'Trọng tài biên' : 'Trọng tài giao bóng'} cho trận #${matchId}`)
     onClose()
   }
+
+  const isOverloaded = referee.assigned >= 4
 
   return (
     <Modal title={`Phân công: ${referee.name}`} onClose={onClose}
@@ -263,13 +280,23 @@ function AssignRefereeModal({ referee, onClose }: { referee: Referee; onClose: (
       </>}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ padding: '10px 12px', background: 'var(--paper-2)', borderRadius: 6, fontSize: 13 }}>
+        <div style={{ padding: '10px 12px', background: isOverloaded ? 'var(--amber-soft)' : 'var(--paper-2)', borderRadius: 6, fontSize: 13, border: isOverloaded ? '1px solid var(--amber)' : 'none' }}>
           <div style={{ fontWeight: 600 }}>{referee.name}</div>
-          <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>{referee.cert} · Đã phân công: {referee.assigned} trận</div>
+          <div style={{ fontSize: 11.5, color: isOverloaded ? 'var(--amber)' : 'var(--ink-3)', marginTop: 2 }}>
+            {referee.cert} · Đã phân công: <strong style={{ color: isOverloaded ? 'var(--accent)' : 'inherit'}}>{referee.assigned} trận</strong>
+          </div>
+          {isOverloaded && <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 4, fontWeight: 600 }}>⚠️ Vượt quá số trận khuyến nghị/ngày.</div>}
         </div>
-        <FieldRow label="Trận đấu">
+        <FieldRow label="Trận đấu *">
           <select value={matchId} onChange={e => setMatchId(Number(e.target.value))} style={inputStyle}>
             {allMatches.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
+        </FieldRow>
+        <FieldRow label="Vai trò điều hành *">
+          <select value={role} onChange={e => setRole(e.target.value)} style={inputStyle}>
+            <option value="main">Trọng tài chính (Main Umpire)</option>
+            <option value="service">Trọng tài giao bóng (Service Judge)</option>
+            <option value="line">Trọng tài biên (Line Judge)</option>
           </select>
         </FieldRow>
       </div>
@@ -280,20 +307,30 @@ function AssignRefereeModal({ referee, onClose }: { referee: Referee; onClose: (
 function AddNewsModal({ onClose }: { onClose: () => void }) {
   const { toast } = useToast()
   const [form, setForm] = useState({ title: '', tag: 'Thông báo', ts: new Date().toLocaleDateString('vi-VN') })
+  const [loading, setLoading] = useState(false)
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
-  const submit = () => {
+  const submit = async () => {
     if (!form.title.trim()) { toast('Tiêu đề không được để trống.', 'error'); return }
-    addNewsItem(form)
-    toast(`Đã đăng bài: "${form.title}"`)
-    onClose()
+    setLoading(true)
+    try {
+      await addNewsItem(form)
+      toast(`Đã đăng bài: "${form.title}"`)
+      onClose()
+    } catch(e) {
+      toast('Có lỗi xảy ra, vui lòng thử lại.', 'error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <Modal title="Bài viết mới" onClose={onClose}
       footer={<>
-        <button style={btnGhost} onClick={onClose}>Huỷ</button>
-        <button style={btnPrimary} onClick={submit}><Icon name="check" size={13}/>Đăng bài</button>
+        <button style={btnGhost} onClick={onClose} disabled={loading}>Huỷ</button>
+        <button style={{...btnPrimary, opacity: loading ? 0.7 : 1}} onClick={submit} disabled={loading}>
+          <Icon name="check" size={13}/>{loading ? 'Đang xử lý...' : 'Đăng bài'}
+        </button>
       </>}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -350,8 +387,29 @@ export function DashboardView() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          {tournament.status === 'draft' && (
+            <button style={{ ...btnPrimary, background: 'var(--accent)' }} onClick={async () => {
+              if (!confirm('Bạn có chắc chắn muốn BẮT ĐẦU giải đấu? Thao tác này sẽ chuyển giải sang trạng thái LIVE.')) return;
+              try {
+                await tournamentApi.changeStatus(tournament.id, 'live');
+                toast('Đã bắt đầu giải đấu!');
+                // Cần reload trang hoặc cập nhật store (giả lập bằng reload)
+                window.location.reload();
+              } catch (e) { toast('Lỗi khi đổi trạng thái', 'error'); }
+            }}><Icon name="play" size={13}/> Bắt đầu Giải</button>
+          )}
+          {tournament.status === 'live' && (
+            <button style={{ ...btnPrimary, background: 'oklch(0.42 0.14 160)' }} onClick={async () => {
+              if (!confirm('Bạn có chắc chắn muốn KẾT THÚC giải đấu? Thao tác này sẽ khoá giải.')) return;
+              try {
+                await tournamentApi.changeStatus(tournament.id, 'finished');
+                toast('Đã kết thúc giải đấu!');
+                window.location.reload();
+              } catch (e) { toast('Lỗi khi đổi trạng thái', 'error'); }
+            }}><Icon name="check-circle" size={13}/> Kết thúc Giải</button>
+          )}
           <button style={btnGhost} onClick={() => setAddMatchOpen(true)}><Icon name="plus" size={13}/> Thêm trận phụ</button>
-          <button style={btnPrimary} onClick={() => toast('Đang xuất báo cáo ngày...', 'info')}><Icon name="dl" size={13}/> Xuất báo cáo ngày</button>
+          <button style={btnPrimary} onClick={() => toast('Đang xuất báo cáo ngày...', 'info')}><Icon name="dl" size={13}/> Xuất báo cáo</button>
         </div>
       </div>
 
@@ -363,9 +421,9 @@ export function DashboardView() {
         </StatCard>
       </div>
       <div style={{ gridColumn: 'span 3' }}>
-        <StatCard label="Trận đã hoàn tất" value={`${tournament.matches.done}/${tournament.matches.total}`} sub={`${Math.round(tournament.matches.done / tournament.matches.total * 100)}% tiến độ giải`}>
+        <StatCard label="Trận đã hoàn tất" value={`${tournament.matches.done}/${tournament.matches.total}`} sub={`${Math.round(tournament.matches.done / (tournament.matches.total || 1) * 100)}% tiến độ giải`}>
           <div style={{ height: 4, background: 'var(--line-2)', borderRadius: 2, marginTop: 4 }}>
-            <div style={{ width: `${tournament.matches.done / tournament.matches.total * 100}%`, height: '100%', background: 'var(--court)', borderRadius: 2 }}/>
+            <div style={{ width: `${Math.round(tournament.matches.done / (tournament.matches.total || 1) * 100)}%`, height: '100%', background: 'var(--court)', borderRadius: 2 }}/>
           </div>
         </StatCard>
       </div>
@@ -459,207 +517,9 @@ export function DashboardView() {
   )
 }
 
-// ── Schedule ─────────────────────────────────────────────────────────────────
+// ── Schedule (Moved to features/tournament/ScheduleView.tsx) ────────────────
 
-export function ScheduleView() {
-  const { liveMatches, upcomingMatches, courts } = useStore()
-  const [day, setDay] = useState(0)
-  const [catFilter, setCatFilter] = useState<string>('all')
-  const [addMatchOpen, setAddMatchOpen] = useState(false)
-  const { toast } = useToast()
-
-  const days = ['Th.7 18/04','CN 19/04','Th.2 20/04','Th.3 21/04','Th.4 22/04','Th.5 23/04','Th.6 24/04','Th.7 25/04','CN 26/04']
-  const slots = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:30','19:00','19:30','20:00']
-
-  const blocks = [
-    { court:1, start:0, span:3, cat:'MS', label:'Đ.nam · R32 · #180-183', status:'done' },
-    { court:1, start:8, span:4, cat:'MS', label:'Đ.nam · R32 · #184', status:'live' },
-    { court:1, start:12, span:3, cat:'MS', label:'Đ.nam · R32 · #192', status:'scheduled' },
-    { court:2, start:0, span:4, cat:'WS', label:'Đ.nữ · R32 · #181-185', status:'done' },
-    { court:2, start:8, span:3, cat:'WS', label:'Đ.nữ · R32 · #185', status:'live' },
-    { court:2, start:11, span:3, cat:'WD', label:'Đôi nữ · QF · #193', status:'scheduled' },
-    { court:3, start:0, span:3, cat:'MD', label:'Đôi nam · R32', status:'done' },
-    { court:3, start:8, span:5, cat:'MD', label:'Đôi nam · QF · #186', status:'live' },
-    { court:3, start:13, span:3, cat:'XD', label:'Đôi NN · QF · #194', status:'scheduled' },
-    { court:4, start:11, span:3, cat:'WS', label:'Đ.nữ · R16 · #190', status:'scheduled' },
-    { court:5, start:0, span:4, cat:'XD', label:'Đôi NN · R32', status:'done' },
-    { court:5, start:9, span:3, cat:'XD', label:'Đôi NN · R16 · #187', status:'live' },
-    { court:5, start:16, span:3, cat:'MS', label:'Đ.nam · R16 · #195', status:'scheduled' },
-    { court:6, start:1, span:3, cat:'WD', label:'Đôi nữ · R32', status:'done' },
-    { court:6, start:8, span:4, cat:'WD', label:'Đôi nữ · R16 · #188', status:'live' },
-    { court:7, start:0, span:0, status:'maintenance' },
-    { court:7, start:11, span:3, cat:'MS', label:'Đ.nam · R16 · #191', status:'scheduled', conflict: true },
-    { court:8, start:1, span:3, cat:'MS', label:'Đ.nam · R32', status:'done' },
-    { court:8, start:9, span:3, cat:'MS', label:'Đ.nam · R32 · #189', status:'live' },
-    { court:8, start:14, span:3, cat:'MS', label:'Đ.nam · R16', status:'scheduled' },
-    ...upcomingMatches.map((m, i) => ({
-      court: m.court, start: 14 + i, span: 3, cat: m.cat,
-      label: `${CATEGORIES[m.cat]} · ${m.round} · #${m.id}`, status: 'scheduled',
-    })),
-  ] as Array<{ court:number; start:number; span:number; cat?:string; label?:string; status:string; conflict?:boolean }>
-
-  const visibleBlocks = catFilter === 'all' ? blocks : blocks.filter(b => !b.cat || b.cat === catFilter)
-
-  const colBg: Record<string, string> = {
-    done: 'var(--paper-3)', live: 'var(--accent)', scheduled: 'var(--paper-2)',
-    maintenance: 'repeating-linear-gradient(45deg, var(--paper-3) 0 6px, var(--paper-2) 6px 12px)',
-  }
-
-  return (
-    <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
-      {addMatchOpen && <AddMatchModal onClose={() => setAddMatchOpen(false)} />}
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div>
-          <div className="caps">Lịch thi đấu chi tiết</div>
-          <h1 className="serif" style={{ margin: '2px 0 0', fontSize: 28, letterSpacing: '0.01em', textTransform: 'uppercase' }}>Điều phối 9 ngày · 8 sân · 284 trận</h1>
-        </div>
-        <div style={{ flex: 1 }}/>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <select value={catFilter} onChange={e => setCatFilter(e.target.value)} style={{ ...inputStyle, width: 'auto', padding: '6px 10px' }}>
-            <option value="all">Tất cả hạng mục</option>
-            {Object.entries(CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v} ({k})</option>)}
-          </select>
-          <button style={btnGhost} onClick={() => toast('Đang xuất lịch...', 'info')}><Icon name="dl" size={13}/> Xuất</button>
-          <button style={btnPrimary} onClick={() => setAddMatchOpen(true)}><Icon name="plus" size={13}/> Thêm trận phụ</button>
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 4, overflowX: 'auto' }} className="no-scrollbar">
-        {days.map((d, i) => (
-          <button key={d} onClick={() => setDay(i)} style={{
-            padding: '7px 14px', borderRadius: 6,
-            border: '1px solid ' + (day === i ? 'var(--ink)' : 'var(--line)'),
-            background: day === i ? 'var(--ink)' : 'var(--paper)',
-            color: day === i ? 'white' : 'var(--ink-2)', fontSize: 12, whiteSpace: 'nowrap', cursor: 'pointer',
-          }}>{d}</button>
-        ))}
-      </div>
-      <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: `90px repeat(${slots.length}, 1fr)`, borderBottom: '1px solid var(--line)', background: 'var(--paper-2)' }}>
-          <div/>
-          {slots.map(s => (
-            <div key={s} className="mono" style={{ padding: '6px 4px', fontSize: 10.5, color: 'var(--ink-3)', textAlign: 'center', borderLeft: '1px solid var(--line-2)' }}>{s}</div>
-          ))}
-        </div>
-        <div style={{ flex: 1, overflow: 'auto' }} className="scrollbar">
-          {courts.map(c => (
-            <div key={c.id} style={{ display: 'grid', gridTemplateColumns: `90px repeat(${slots.length}, 1fr)`, borderBottom: '1px solid var(--line-2)', minHeight: 48, position: 'relative' }}>
-              <div style={{ padding: '12px', fontSize: 12, fontWeight: 600, borderRight: '1px solid var(--line)', display: 'flex', flexDirection: 'column', justifyContent: 'center', background: 'var(--paper-2)' }}>
-                <div>Sân {c.id}</div>
-                <div className="mono" style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 400 }}>{c.floor}</div>
-              </div>
-              {slots.map((_, i) => <div key={i} style={{ borderLeft: '1px solid var(--line-2)' }}/>)}
-              {c.status === 'maintenance' && (
-                <div style={{ position: 'absolute', left: 90, right: 0, top: 0, bottom: 0, background: colBg.maintenance, display: 'flex', alignItems: 'center', paddingLeft: 12, color: 'var(--ink-3)', fontSize: 11.5, fontStyle: 'italic' }}>
-                  Bảo trì lưới — không xếp lịch
-                </div>
-              )}
-              {visibleBlocks.filter(b => b.court === c.id && b.span > 0).map((b, i) => {
-                const width = `calc((100% - 90px) / ${slots.length} * ${b.span})`
-                const left  = `calc(90px + (100% - 90px) / ${slots.length} * ${b.start})`
-                return (
-                  <div key={i} style={{
-                    position: 'absolute', left, width, top: 5, bottom: 5,
-                    background: colBg[b.status], color: b.status === 'live' ? 'white' : 'var(--ink)',
-                    borderRadius: 4, padding: '6px 8px', fontSize: 11, cursor: 'pointer',
-                    border: b.conflict ? '1.5px solid var(--amber)' : (b.status === 'scheduled' ? '1px solid var(--line)' : 'none'),
-                    display: 'flex', flexDirection: 'column', gap: 1, overflow: 'hidden',
-                  }}>
-                    <div className="mono" style={{ fontSize: 9.5, opacity: 0.75 }}>{b.cat}</div>
-                    <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.label}</div>
-                    {b.conflict && <div style={{ fontSize: 10, color: 'var(--amber)', fontWeight: 600 }}>⚠ Xung đột trọng tài</div>}
-                  </div>
-                )
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 14, fontSize: 11.5, color: 'var(--ink-3)' }}>
-        <Legend color="var(--accent)" label="Đang thi đấu"/>
-        <Legend color="var(--paper-3)" label="Đã kết thúc"/>
-        <Legend color="var(--paper-2)" outline label="Đã lên lịch"/>
-        <Legend color="var(--amber)" outline label="Xung đột / cần xử lý"/>
-      </div>
-    </div>
-  )
-}
-
-const Legend = ({ color, label, outline }: { color: string; label: string; outline?: boolean }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-    <span style={{ width: 14, height: 10, background: outline ? 'transparent' : color, border: '1px solid ' + color, borderRadius: 2, display: 'inline-block' }}/>
-    {label}
-  </div>
-)
-
-// ── Bracket ──────────────────────────────────────────────────────────────────
-
-export function BracketView() {
-  const [activeCat, setActiveCat] = useState('MS')
-  const names = {
-    r16: [
-      ['Nguyễn Hải Đăng', 'Trần Minh Quân'],
-      ['Lê Đức Phát', 'Nguyễn Hoàng Nam'],
-      ['Phạm Văn Hiếu', 'Trần Quốc Toàn'],
-      ['Đỗ Tuấn Đức', 'Lý Hoàng Long'],
-      ['Nguyễn Tiến Minh', 'Hoàng Văn Bách'],
-      ['Vũ Tiến Dũng', 'Phan Văn Hùng'],
-      ['Lê Hoàng Phúc', 'Đặng Quang Minh'],
-      ['Nguyễn Anh Tú', 'Trần Duy Khánh'],
-    ],
-  }
-  const col: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minWidth: 220 }
-
-  const MatchCard = ({ ns, live }: { ns: [string, string]; live?: boolean }) => (
-    <div style={{ background: 'var(--paper)', border: '1px solid ' + (live ? 'var(--accent)' : 'var(--line)'), borderRadius: 6, padding: '8px 10px', fontSize: 12.5, position: 'relative', boxShadow: live ? '0 0 0 3px oklch(0.94 0.04 25)' : 'none' }}>
-      {live && <span className="pill live" style={{ position: 'absolute', top: -8, right: 8, fontSize: 9.5, padding: '1px 6px' }}><span className="dot live-dot"/>LIVE</span>}
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}><span>{ns[0]}</span></div>
-      <div style={{ borderTop: '1px solid var(--line-2)' }}/>
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}><span>{ns[1]}</span></div>
-    </div>
-  )
-
-  return (
-    <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
-        <div>
-          <div className="caps">Sơ đồ thi đấu</div>
-          <h1 className="serif" style={{ margin: '2px 0 0', fontSize: 28, letterSpacing: '0.01em', textTransform: 'uppercase' }}>{CATEGORIES[activeCat]} · Nhánh loại trực tiếp</h1>
-          <div style={{ color: 'var(--ink-2)', fontSize: 12.5 }}>Tự cập nhật sau mỗi trận · Hạt giống 1–8 được phân tán theo FIBA seeding</div>
-        </div>
-        <div style={{ flex: 1 }}/>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {Object.entries(CATEGORIES).map(([k, v]) => (
-            <button key={k} onClick={() => setActiveCat(k)} style={{ padding: '6px 11px', borderRadius: 6, border: '1px solid ' + (activeCat === k ? 'var(--ink)' : 'var(--line)'), background: activeCat === k ? 'var(--ink)' : 'var(--paper)', color: activeCat === k ? 'white' : 'var(--ink-2)', fontSize: 12, cursor: 'pointer' }}>{v}</button>
-          ))}
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 18, padding: 24, background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 8, overflowX: 'auto' }}>
-        <div style={col}>
-          <div className="caps" style={{ textAlign: 'center' }}>Vòng 1/16</div>
-          {names.r16.map((ns, i) => <MatchCard key={i} ns={ns as [string,string]} live={i === 0 && activeCat === 'MS'}/>)}
-        </div>
-        <div style={col}>
-          <div className="caps" style={{ textAlign: 'center' }}>Tứ kết</div>
-          {[0,1,2,3].map(i => <MatchCard key={i} ns={['TBD','TBD']}/>)}
-        </div>
-        <div style={col}>
-          <div className="caps" style={{ textAlign: 'center' }}>Bán kết</div>
-          {[0,1].map(i => <MatchCard key={i} ns={['TBD','TBD']}/>)}
-        </div>
-        <div style={col}>
-          <div className="caps" style={{ textAlign: 'center' }}>Chung kết</div>
-          <MatchCard ns={['TBD','TBD']}/>
-          <div style={{ marginTop: 40, background: 'var(--ink)', color: 'white', borderRadius: 8, padding: 16, textAlign: 'center' }}>
-            <div className="caps" style={{ color: 'oklch(0.75 0.01 250)' }}>Nhà vô địch</div>
-            <div className="serif" style={{ fontSize: 28, letterSpacing: '0.02em', textTransform: 'uppercase', marginTop: 6 }}>—</div>
-            <div className="mono" style={{ fontSize: 11, color: 'oklch(0.65 0.01 250)', marginTop: 4 }}>Cúp + 50.000.000 ₫</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+// ── Bracket (Moved to features/tournament/BracketView.tsx) ──────────────────
 
 // ── Athletes ─────────────────────────────────────────────────────────────────
 
@@ -731,7 +591,8 @@ function AthleteDetail({ a, onClose }: { a: Athlete; onClose: () => void }) {
   )
 }
 
-export function AthletesView() {
+export function AthletesView() { return <RegistrationHubView />; }
+function _AthletesView() {
   const { athletes } = useStore()
   const { toast } = useToast()
   const [filter, setFilter] = useState('all')
@@ -816,61 +677,7 @@ export function AthletesView() {
   )
 }
 
-// ── Courts ───────────────────────────────────────────────────────────────────
-
-export function CourtsView() {
-  const { courts, liveMatches } = useStore()
-  return (
-    <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div>
-        <div className="caps">Sân & điều phối</div>
-        <h1 className="serif" style={{ margin: '2px 0 0', fontSize: 28, letterSpacing: '0.01em', textTransform: 'uppercase' }}>8 sân · Nhà thi đấu Phú Thọ</h1>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-        {courts.map(c => {
-          const live = liveMatches.find(m => m.court === c.id)
-          return (
-            <div key={c.id} style={{ background: c.status === 'live' ? 'var(--ink)' : 'var(--paper)', color: c.status === 'live' ? 'white' : 'var(--ink)', border: '1px solid ' + (c.status === 'live' ? 'var(--ink)' : 'var(--line)'), borderRadius: 8, overflow: 'hidden' }}>
-              <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid ' + (c.status === 'live' ? 'oklch(0.28 0.01 250)' : 'var(--line)') }}>
-                <div>
-                  <div className="caps" style={{ opacity: 0.7 }}>SÂN</div>
-                  <div className="serif" style={{ fontSize: 40 }}>{c.id}</div>
-                </div>
-                {c.status === 'live'        && <span className="pill live"><span className="dot live-dot"/>LIVE</span>}
-                {c.status === 'idle'        && <span className="pill">Trống</span>}
-                {c.status === 'maintenance' && <span className="pill warn">Bảo trì</span>}
-              </div>
-              <div style={{ padding: 12, height: 110, position: 'relative', background: c.status === 'live' ? 'oklch(0.24 0.01 250)' : 'var(--paper-2)' }}>
-                <div style={{ position: 'absolute', inset: 12, border: '1px solid ' + (c.status === 'live' ? 'oklch(0.4 0.01 250)' : 'var(--line)'), borderRadius: 3 }}>
-                  <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: c.status === 'live' ? 'oklch(0.4 0.01 250)' : 'var(--line)' }}/>
-                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', width: 1, background: c.status === 'live' ? 'oklch(0.4 0.01 250)' : 'var(--line)' }}/>
-                </div>
-                {live && (
-                  <div className="mono" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, letterSpacing: '-0.02em' }}>
-                    {live.sets[live.current][0]} : {live.sets[live.current][1]}
-                  </div>
-                )}
-              </div>
-              <div style={{ padding: '10px 14px', fontSize: 12 }}>
-                {live ? (
-                  <>
-                    <div style={{ opacity: 0.7, fontSize: 10.5 }} className="caps">{live.round} · {live.cat}</div>
-                    <div style={{ marginTop: 3 }}>{live.a.name}</div>
-                    <div style={{ opacity: 0.7 }}>vs {live.b.name}</div>
-                  </>
-                ) : c.status === 'idle' ? (
-                  <div style={{ color: 'var(--ink-3)' }}>Trống — chưa xếp lịch</div>
-                ) : (
-                  <div style={{ color: 'var(--ink-2)' }}>Thay lưới · dự kiến hoạt động trở lại 16:30</div>
-                )}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
+// ── Courts (Moved to features/tournament/CourtsView.tsx) ────────────────────
 
 // ── Inventory ─────────────────────────────────────────────────────────────────
 
@@ -946,68 +753,23 @@ export function InventoryView() {
   )
 }
 
-// ── Finance ──────────────────────────────────────────────────────────────────
-
-export function FinanceView() {
-  const { transactions, tournament } = useStore()
-  const { toast } = useToast()
-  const totalIn  = transactions.filter(r => r.amt > 0).reduce((s, r) => s + r.amt, 0)
-  const totalOut = transactions.filter(r => r.amt < 0).reduce((s, r) => s + r.amt, 0)
-
-  return (
-    <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div>
-        <div className="caps">Tài chính giải đấu</div>
-        <h1 className="serif" style={{ margin: '2px 0 0', fontSize: 28, letterSpacing: '0.01em', textTransform: 'uppercase' }}>Ngân sách · Thu/Chi · Báo cáo</h1>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-        <StatCard label="Ngân sách giải"   value={money(tournament.budget)}  sub="được phê duyệt 15/03"/>
-        <StatCard label="Tổng thu đến nay" value={money(totalIn)}             sub="lệ phí + tài trợ" accent="var(--court)"/>
-        <StatCard label="Tổng chi đến nay" value={money(-totalOut)}           sub="vật tư + tổ chức + thưởng" accent="var(--accent)"/>
-        <StatCard label="Cân đối"          value={money(totalIn + totalOut)}  sub="tính đến hôm nay"/>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14 }}>
-        <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 8 }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>
-            <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>Lịch sử giao dịch</h3>
-            <div style={{ flex: 1 }}/>
-            <button style={btnGhost} onClick={() => toast('Đang xuất PDF...', 'info')}><Icon name="pdf" size={13}/> Xuất PDF</button>
-          </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-            <tbody>
-              {transactions.map((r, i) => (
-                <tr key={i}>
-                  <td className="mono" style={{ padding: '10px 16px', borderBottom: '1px solid var(--line-2)', color: 'var(--ink-3)', width: 60 }}>{r.t}</td>
-                  <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--line-2)' }}>{r.desc}</td>
-                  <td className="mono" style={{ padding: '10px 16px', borderBottom: '1px solid var(--line-2)', textAlign: 'right', fontWeight: 600, color: r.amt > 0 ? 'var(--court)' : 'var(--accent)' }}>
-                    {r.amt > 0 ? '+' : ''}{money(r.amt)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 8, padding: 16 }}>
-          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>Cơ cấu chi phí</h3>
-          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[['Thuê địa điểm',270,'var(--ink)'],['Giải thưởng',200,'var(--accent)'],['Vật tư & hậu cần',160,'var(--court)'],['Phí trọng tài',126,'var(--amber)'],['Y tế & an ninh',40,'var(--ink-3)'],['Truyền thông',30,'oklch(0.55 0.12 250)']].map(([l,v,c]) => (
-              <div key={String(l)}>
-                <div style={{ display: 'flex', fontSize: 12 }}><span>{l}</span><span style={{flex:1}}/><span className="mono">{v}M</span></div>
-                <div style={{ height: 4, background: 'var(--line-2)', borderRadius: 2, marginTop: 3 }}>
-                  <div style={{ width: `${Number(v)/3}%`, height: '100%', background: String(c), borderRadius: 2 }}/>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+// ── Finance (Moved to features/finance/FinanceView.tsx) ──────────────────────
 
 // ── Reports ──────────────────────────────────────────────────────────────────
 
 export function ReportsView() {
+  const [showBM25, setShowBM25] = useState(false);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box' }}>
+      {showBM25 && <LegalReportModal onClose={() => setShowBM25(false)} onSave={(d) => { console.log(d); setShowBM25(false); }} />}
+      <div style={{ padding: '16px 32px 0', display: 'flex', justifyContent: 'flex-end' }}>
+        <button onClick={() => setShowBM25(true)} style={{ background: 'var(--ink)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>+ Xuất báo cáo pháp lý (BM25)</button>
+      </div>
+      <div style={{ flex: 1, minHeight: 0 }}><MatchAuditLogView /></div>
+    </div>
+  )
+}
+function _ReportsView() {
   const { toast } = useToast()
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -1101,7 +863,7 @@ export function NewsView() {
 
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {addNewsOpen && <AddNewsModal onClose={() => setAddNewsOpen(false)} />}
+      {addNewsOpen && <ArticleEditor onClose={() => setAddNewsOpen(false)} onSave={(data) => { console.log(data); setAddNewsOpen(false); }} />}
 
       <div style={{ display: 'flex', alignItems: 'flex-end' }}>
         <div>
@@ -1127,62 +889,4 @@ export function NewsView() {
   )
 }
 
-// ── Settings ─────────────────────────────────────────────────────────────────
-
-export function SettingsView() {
-  const { tournament } = useStore()
-  const { toast } = useToast()
-  const [editing, setEditing] = useState(false)
-  const [name, setName] = useState(tournament.name)
-  const [venue, setVenue] = useState(tournament.venue)
-
-  const save = () => {
-    updateTournamentName(name)
-    updateTournamentVenue(venue)
-    setEditing(false)
-    toast('Đã lưu cấu hình giải.')
-  }
-
-  const fields = [
-    ['Tên giải',       editing ? null : tournament.name,   'name'],
-    ['Mã giải',        tournament.id,                       null],
-    ['Địa điểm',       editing ? null : tournament.venue,  'venue'],
-    ['Thời gian',      `${tournament.start} → ${tournament.end}`, null],
-    ['Thể thức',       tournament.format,                   null],
-    ['Hạng mục',       tournament.categories.join(' · '),   null],
-    ['Lệ phí đăng ký', '500.000 ₫ / hạng mục',             null],
-    ['Điểm xếp hạng QG','Công thức VBF-2024',              null],
-    ['Vòng tránh đối đầu','cùng CLB ≥ Vòng 1/16',         null],
-    ['Ngôn ngữ hệ thống','Tiếng Việt / English',           null],
-    ['Bảo mật dữ liệu cá nhân','Tuân thủ Nghị định 13/2023/NĐ-CP', null],
-  ] as Array<[string, string | null, string | null]>
-
-  return (
-    <div style={{ padding: 18, maxWidth: 720 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 14 }}>
-        <div>
-          <div className="caps">Cấu hình giải</div>
-          <h1 className="serif" style={{ margin: '2px 0 0', fontSize: 28, letterSpacing: '0.01em', textTransform: 'uppercase' }}>{tournament.name}</h1>
-        </div>
-        <div style={{ flex: 1 }}/>
-        {editing
-          ? <><button style={btnGhost} onClick={() => setEditing(false)}>Huỷ</button><button style={btnPrimary} onClick={save}><Icon name="check" size={13}/>Lưu</button></>
-          : <button style={btnGhost} onClick={() => setEditing(true)}><Icon name="cog" size={13}/>Chỉnh sửa</button>
-        }
-      </div>
-      <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 8, padding: 20, display: 'grid', gap: 14 }}>
-        {fields.map(([l, v, field]) => (
-          <div key={l} style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 12, fontSize: 13, borderBottom: '1px solid var(--line-2)', paddingBottom: 12 }}>
-            <div className="caps" style={{ fontSize: 10.5, paddingTop: 2 }}>{l}</div>
-            {editing && field === 'name'
-              ? <input value={name} onChange={e => setName(e.target.value)} style={inputStyle} />
-              : editing && field === 'venue'
-              ? <input value={venue} onChange={e => setVenue(e.target.value)} style={inputStyle} />
-              : <div>{v ?? (field === 'name' ? tournament.name : field === 'venue' ? tournament.venue : '—')}</div>
-            }
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
+// ── Settings (Moved to features/tournament/SettingsView.tsx) ─────────────────

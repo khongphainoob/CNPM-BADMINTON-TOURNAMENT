@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
 
 import authRoutes from './modules/auth/auth.routes.js';
 import peopleRoutes from './modules/people/people.routes.js';
@@ -11,6 +12,7 @@ import notificationRoutes from './modules/notification/notification.routes.js';
 import paymentRoutes from './modules/payment/payment.routes.js';
 import reportingRoutes from './modules/reporting/reporting.routes.js';
 import { notFound, errorHandler } from './middleware/error.js';
+import { swaggerSpec } from './config/swagger.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -21,6 +23,8 @@ app.use(express.json());
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'badminton-tournament-api' });
 });
+
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/people', peopleRoutes);

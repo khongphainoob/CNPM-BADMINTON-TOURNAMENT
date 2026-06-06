@@ -1,0 +1,11 @@
+# Tự động chuẩn hóa kết thúc dòng cho tất cả các tệp văn bản
+* text=auto
+
+# Chỉ định rõ các tệp code luôn dùng LF khi lưu trữ
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.md text eol=lf

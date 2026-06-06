@@ -1,5 +1,7 @@
-import { useState } from 'react'
-import { TOURNAMENT, CATEGORIES, LIVE_MATCHES, UPCOMING, ATHLETES, NEWS, RANKING_MS } from '../../data/legacy'
+import { useState, useEffect } from 'react'
+import { CATEGORIES } from '../../data/constants'
+import { useStore, fetchDashboard, fetchMatches, fetchAthletes, fetchNews } from '../../data/store'
+import { reportingApi, competitionApi } from '../../data/api'
 import { ShuttleMark } from '../referee/shared'
 import Icon from '../shared/Icon'
 import { btnGhost, btnPrimary, money } from '../shared/tokens'
@@ -10,6 +12,19 @@ type Props = { onLogout: () => void }
 
 export default function SpectatorView({ onLogout }: Props) {
   const [tab, setTab] = useState<Tab>('home')
+  
+  useEffect(() => {
+    fetchDashboard(1)
+    fetchMatches(1)
+    fetchAthletes()
+    fetchNews()
+
+    const intervalId = setInterval(() => {
+      fetchMatches(1)
+    }, 5000)
+
+    return () => clearInterval(intervalId)
+  }, [])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--paper)', overflowY: 'auto' }}>
@@ -18,7 +33,7 @@ export default function SpectatorView({ onLogout }: Props) {
       <div style={{ padding: '48px 48px 80px', maxWidth: 1280, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
         {tab === 'home'                             && <PubHome onGoTo={setTab} />}
         {tab === 'ranking'                          && <PubRanking />}
-        {(tab === 'calendar' || tab === 'schedule') && <PubSchedule />}
+        {tab === 'calendar'                         && <PubSchedule />}
         {tab === 'players'                          && <PubPlayers />}
         {tab === 'news'                             && <PubNews />}
         {tab === 'live'                             && <PubLive />}
@@ -46,6 +61,7 @@ export default function SpectatorView({ onLogout }: Props) {
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 
 function SpectatorNav({ tab, setTab, onLogout }: { tab: Tab; setTab: (t: Tab) => void; onLogout: () => void }) {
+  const { liveMatches } = useStore()
   const NAV: [Tab, string][] = [
     ['home',     'Tổng quan'],
     ['ranking',  'Bảng xếp hạng'],
@@ -88,7 +104,7 @@ function SpectatorNav({ tab, setTab, onLogout }: { tab: Tab; setTab: (t: Tab) =>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         <span className="pill live" style={{ fontSize: 10.5 }}>
-          <span className="dot live-dot" /> {LIVE_MATCHES.length} trận live
+          <span className="dot live-dot" /> {liveMatches.length} trận live
         </span>
         <button onClick={onLogout} style={{
           background: 'transparent', border: '1px solid oklch(0.34 0.01 250)',
@@ -153,16 +169,18 @@ function SpectatorHero({ tab }: { tab: Tab }) {
 // ─── Home ─────────────────────────────────────────────────────────────────────
 
 function PubHome({ onGoTo }: { onGoTo: (t: Tab) => void }) {
-  const featured = LIVE_MATCHES[2]
+  const { liveMatches, tournament, news } = useStore()
+  const featured = liveMatches[0]
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
         {[
-          ['Vận động viên', TOURNAMENT.registered, 'đã đăng ký'],
-          ['Trận hôm nay', TOURNAMENT.matches.live + TOURNAMENT.matches.next, 'live + sắp diễn ra'],
-          ['Sân thi đấu', TOURNAMENT.courts, LIVE_MATCHES.length + ' đang sử dụng'],
-          ['Hạng mục', TOURNAMENT.categories.length, TOURNAMENT.categories.join(' · ')],
+          ['Vận động viên', tournament.registered, 'đã đăng ký'],
+          ['Trận hôm nay', tournament.matches.live + tournament.matches.next, 'live + sắp diễn ra'],
+          ['Sân thi đấu', tournament.courts, liveMatches.length + ' đang sử dụng'],
+          ['Hạng mục', tournament.categories.length, tournament.categories.join(' · ')],
         ].map(([label, val, sub]) => (
           <div key={String(label)} style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 8, padding: '16px 18px' }}>
             <div className="caps">{label}</div>
@@ -179,46 +197,52 @@ function PubHome({ onGoTo }: { onGoTo: (t: Tab) => void }) {
             <span className="pill live" style={{ padding: '1px 7px', fontSize: 9.5 }}><span className="dot live-dot" /> LIVE</span>
             Trận nổi bật
           </div>
-          <div style={{ background: 'var(--ink)', color: 'white', borderRadius: 10, padding: 22 }}>
-            <div style={{ fontSize: 11, color: 'oklch(0.68 0.01 250)', marginBottom: 14 }}>
-              {CATEGORIES[featured.cat]} · {featured.round} · Sân {featured.court}
-            </div>
-            {[featured.a, featured.b].map((player, pi) => {
-              const setsWon = featured.sets.filter((_, si) => si < featured.current).reduce((acc, s) => acc + (s[pi] > s[1 - pi] ? 1 : 0), 0)
-              return (
-                <div key={pi}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 15, fontWeight: 600 }}>{player.name}</div>
-                      <div style={{ fontSize: 11, opacity: 0.55, marginTop: 1 }}>{player.club}{player.seed ? ' · Hạt giống ' + player.seed : ''}</div>
+          {featured ? (
+            <div style={{ background: 'var(--ink)', color: 'white', borderRadius: 10, padding: 22 }}>
+              <div style={{ fontSize: 11, color: 'oklch(0.68 0.01 250)', marginBottom: 14 }}>
+                {CATEGORIES[featured.cat]} · {featured.round} · Sân {featured.court}
+              </div>
+              {[featured.a, featured.b].map((player, pi) => {
+                const setsWon = featured.sets.filter((_, si) => si < featured.current).reduce((acc, s) => acc + (s[pi] > s[1 - pi] ? 1 : 0), 0)
+                return (
+                  <div key={pi}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 15, fontWeight: 600 }}>{player.name}</div>
+                        <div style={{ fontSize: 11, opacity: 0.55, marginTop: 1 }}>{player.club}{player.seed ? ' · Hạt giống ' + player.seed : ''}</div>
+                      </div>
+                      <div className="serif" style={{ fontSize: 48, color: 'white', lineHeight: 1, minWidth: 32, textAlign: 'center' }}>{setsWon}</div>
                     </div>
-                    <div className="serif" style={{ fontSize: 48, color: 'white', lineHeight: 1, minWidth: 32, textAlign: 'center' }}>{setsWon}</div>
+                    {pi === 0 && <div style={{ height: 1, background: 'oklch(0.28 0.01 250)', margin: '12px 0' }} />}
                   </div>
-                  {pi === 0 && <div style={{ height: 1, background: 'oklch(0.28 0.01 250)', margin: '12px 0' }} />}
-                </div>
-              )
-            })}
-            <div style={{ marginTop: 16, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {featured.sets.map((s, i) => (
-                <div key={i} style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  padding: '6px 12px', borderRadius: 4, gap: 2,
-                  background: i === featured.current ? 'var(--accent)' : 'oklch(0.23 0.01 250)',
-                  fontSize: 14, fontWeight: 700,
-                }}>
-                  <span>{s[0]}</span>
-                  <span style={{ fontSize: 8, opacity: 0.4, fontWeight: 400 }}>–</span>
-                  <span>{s[1]}</span>
-                </div>
-              ))}
+                )
+              })}
+              <div style={{ marginTop: 16, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {featured.sets.map((s, i) => (
+                  <div key={i} style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    padding: '6px 12px', borderRadius: 4, gap: 2,
+                    background: i === featured.current ? 'var(--accent)' : 'oklch(0.23 0.01 250)',
+                    fontSize: 14, fontWeight: 700,
+                  }}>
+                    <span>{s[0]}</span>
+                    <span style={{ fontSize: 8, opacity: 0.4, fontWeight: 400 }}>–</span>
+                    <span>{s[1]}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="mono" style={{ fontSize: 10.5, color: 'oklch(0.68 0.01 250)' }}>⏱ {featured.elapsed} · TT: {featured.umpire}</div>
+                <button onClick={() => onGoTo('live')} style={{ background: 'transparent', border: '1px solid oklch(0.34 0.01 250)', color: 'oklch(0.82 0.01 250)', padding: '6px 13px', borderRadius: 5, fontSize: 11.5, cursor: 'pointer' }}>
+                  Tất cả trận →
+                </button>
+              </div>
             </div>
-            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div className="mono" style={{ fontSize: 10.5, color: 'oklch(0.68 0.01 250)' }}>⏱ {featured.elapsed} · TT: {featured.umpire}</div>
-              <button onClick={() => onGoTo('live')} style={{ background: 'transparent', border: '1px solid oklch(0.34 0.01 250)', color: 'oklch(0.82 0.01 250)', padding: '6px 13px', borderRadius: 5, fontSize: 11.5, cursor: 'pointer' }}>
-                Tất cả trận →
-              </button>
+          ) : (
+            <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 10, padding: 32, textAlign: 'center', color: 'var(--ink-3)' }}>
+              Không có trận nào đang diễn ra
             </div>
-          </div>
+          )}
         </div>
 
         <div>
@@ -245,7 +269,7 @@ function PubHome({ onGoTo }: { onGoTo: (t: Tab) => void }) {
           <button onClick={() => onGoTo('news')} style={{ ...btnGhost, fontSize: 12 }}>Xem tất cả →</button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          {NEWS.map(n => (
+          {news.slice(0, 4).map(n => (
             <div key={n.id} style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', cursor: 'pointer' }}>
               <div className="court-placeholder" style={{ height: 100, fontSize: 9 }}>tin · 16:9</div>
               <div style={{ padding: '12px 14px' }}>
@@ -281,6 +305,14 @@ function PubHome({ onGoTo }: { onGoTo: (t: Tab) => void }) {
 // ─── Ranking ──────────────────────────────────────────────────────────────────
 
 function PubRanking() {
+  const [ranking, setRanking] = useState<any[]>([])
+  
+  useEffect(() => {
+    reportingApi.getLeaderboard({ categoryCode: 'MS' }).then(res => {
+      setRanking(res)
+    })
+  }, [])
+
   return (
     <div style={{ maxWidth: 780 }}>
       <div className="caps">Bảng xếp hạng quốc gia</div>
@@ -295,7 +327,7 @@ function PubRanking() {
             </tr>
           </thead>
           <tbody>
-            {RANKING_MS.map(r => (
+            {ranking.map(r => (
               <tr key={r.rank}>
                 <td className="mono" style={{ padding: '10px 12px', borderBottom: '1px solid var(--line-2)' }}>{r.rank}</td>
                 <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--line-2)', fontWeight: 500 }}>{r.name}</td>
@@ -317,6 +349,7 @@ function PubRanking() {
 // ─── Schedule ─────────────────────────────────────────────────────────────────
 
 function PubSchedule() {
+  const { liveMatches, upcomingMatches } = useStore()
   return (
     <div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
@@ -336,8 +369,8 @@ function PubSchedule() {
           </thead>
           <tbody>
             {[
-              ...LIVE_MATCHES.map(m => ({ ...m, status: 'live' as const, t: m.start })),
-              ...UPCOMING.map(m => ({ ...m, status: 'upcoming' as const, a: { name: m.a, club: '', seed: null }, b: { name: m.b, club: '', seed: null } })),
+              ...liveMatches.map(m => ({ ...m, status: 'live' as const, t: m.start })),
+              ...upcomingMatches.map(m => ({ ...m, status: 'upcoming' as const, a: { name: m.a, club: '', seed: null }, b: { name: m.b, club: '', seed: null } })),
             ].map((m, i) => (
               <tr key={i}>
                 <td className="mono" style={{ padding: '12px 14px', borderBottom: '1px solid var(--line-2)' }}>{m.t}</td>
@@ -365,10 +398,11 @@ function PubSchedule() {
 // ─── Players ──────────────────────────────────────────────────────────────────
 
 function PubPlayers() {
+  const { athletes } = useStore()
   const [query, setQuery] = useState('')
   const [filterTier, setFilterTier] = useState('all')
 
-  const filtered = ATHLETES.filter(a => {
+  const filtered = athletes.filter(a => {
     const q = query.trim().toLowerCase()
     const matchQ = !q || a.name.toLowerCase().includes(q) || a.club.toLowerCase().includes(q) || a.id.toLowerCase().includes(q)
     const matchTier = filterTier === 'all' || a.tier === filterTier
@@ -413,7 +447,7 @@ function PubPlayers() {
   )
 }
 
-function PlayerCard({ athlete: a }: { athlete: typeof ATHLETES[number] }) {
+function PlayerCard({ athlete: a }: { athlete: any }) {
   const words = a.name.trim().split(/\s+/)
   const initials = words.length >= 2 ? words[words.length - 2][0] + words[words.length - 1][0] : words[0].slice(0, 2)
   const tierMeta: Record<string, { bg: string; label: string }> = {
@@ -465,9 +499,10 @@ function PlayerCard({ athlete: a }: { athlete: typeof ATHLETES[number] }) {
 // ─── Live ─────────────────────────────────────────────────────────────────────
 
 function PubLive() {
+  const { liveMatches } = useStore()
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-      {LIVE_MATCHES.map(m => (
+      {liveMatches.map(m => (
         <div key={m.id} style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 8, padding: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span className="pill live"><span className="dot live-dot" />LIVE</span>
@@ -500,14 +535,38 @@ function PubLive() {
 // ─── Results ──────────────────────────────────────────────────────────────────
 
 function PubResults() {
-  const rs = [
-    { d: '17/04', cat: 'MS', w: 'Nguyễn Hải Đăng', l: 'Nguyễn Quang Hưng', score: '21-14, 21-19',         r: 'R64' },
-    { d: '17/04', cat: 'WS', w: 'Nguyễn Thùy Linh', l: 'Đặng Thị Mai',     score: '21-12, 21-15',         r: 'R32' },
-    { d: '17/04', cat: 'MD', w: 'Đức / Nam',         l: 'Anh / Long',       score: '21-18, 19-21, 21-17',  r: 'R32' },
-    { d: '17/04', cat: 'XD', w: 'Đức / Khánh',       l: 'Minh / Trang',     score: '21-12, 21-13',         r: 'R32' },
-    { d: '16/04', cat: 'MS', w: 'Lê Đức Phát',       l: 'Vũ Quốc Anh',      score: '21-10, 21-14',         r: 'R64' },
-    { d: '16/04', cat: 'WD', w: 'Linh / Trang',      l: 'Vân Anh / Thảo',   score: '21-17, 14-21, 21-18',  r: 'R32' },
-  ]
+  const [rs, setRs] = useState<any[]>([])
+  
+  useEffect(() => {
+    competitionApi.listMatches({ status: 'completed', limit: 20 }).then(res => {
+      const items = res.data || []
+      setRs(items.map((m: any) => {
+        const sideA = (m.participants || []).filter((p: any) => p.side === 'A')
+        const sideB = (m.participants || []).filter((p: any) => p.side === 'B')
+        const aName = sideA[0]?.player?.name || 'TBD'
+        const bName = sideB[0]?.player?.name || 'TBD'
+        
+        let scoreStr = (m.sets || []).map((s: any) => `${s.score_a}-${s.score_b}`).join(', ')
+        if (!scoreStr) scoreStr = '-'
+        
+        // Count sets to determine winner simply
+        let aWon = 0, bWon = 0
+        ;(m.sets || []).forEach((s: any) => {
+          if (s.score_a > s.score_b) aWon++
+          else if (s.score_b > s.score_a) bWon++
+        })
+        
+        return {
+          d: new Date(m.scheduled_at || m.created_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+          cat: m.category_code || m.event_label || 'MS',
+          r: m.round || 'Vòng bảng',
+          w: aWon >= bWon ? aName : bName,
+          l: aWon >= bWon ? bName : aName,
+          score: scoreStr
+        }
+      }))
+    })
+  }, [])
   return (
     <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -538,8 +597,8 @@ function PubResults() {
 // ─── News ─────────────────────────────────────────────────────────────────────
 
 function PubNews() {
-  const items = [...NEWS, ...NEWS.map(n => ({ ...n, id: n.id + '_b' }))]
-  const [featured, ...rest] = items
+  const { news } = useStore()
+  const [featured, ...rest] = news
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 36, alignItems: 'start' }}>

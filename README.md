@@ -25,6 +25,15 @@ Dự án này là một ứng dụng Full-stack cơ bản bao gồm Front-end x�
 
 ### Yêu cầu hệ thống
 - Tải và cài đặt **[Node.js](https://nodejs.org/)** (phiên bản 18+ được khuyến nghị).
+- (Tuỳ chọn) Cài **Docker Desktop** nếu muốn chạy Postgres + Redis bằng `docker-compose`.
+
+### 0. Khởi chạy Postgres + Redis (tuỳ chọn)
+
+```bash
+docker-compose up -d
+```
+
+> Dùng `.env.example` trong `back-end` để cấu hình `DATABASE_URL` và `REDIS_URL` phù hợp nếu bạn chạy Postgres/Redis riêng.
 
 ### 1. Khởi chạy Back-end
 
@@ -32,21 +41,30 @@ Mở terminal và di chuyển vào thư mục `back-end`:
 ```bash
 cd back-end
 ```
+Cấu hình môi trường:
+```bash
+cp .env.example .env
+```
 Cài đặt các gói phụ thuộc (Express, CORS):
 ```bash
 npm install
 ```
 Khởi động server:
 ```bash
-node server.js
+npm run dev
 ```
-> **Lưu ý**: Server sẽ chạy tại địa chỉ `http://localhost:8080`.
+> **Lưu ý**: Server sẽ chạy tại địa chỉ `http://localhost:3000`.
+> **API docs**: `http://localhost:3000/api/docs` (Swagger UI).
 
 ### 2. Khởi chạy Front-end
 
 Mở một terminal **mới** (giữ terminal của back-end tiếp tục chạy) và di chuyển vào thư mục `front-end`:
 ```bash
 cd front-end
+```
+Cấu hình môi trường:
+```bash
+cp .env.example .env
 ```
 Cài đặt các gói phụ thuộc:
 ```bash

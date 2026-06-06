@@ -15,6 +15,7 @@ INSERT INTO roles (code, label) VALUES
   ('btc',       'Ban tổ chức'),
   ('referee',   'Trọng tài'),
   ('athlete',   'Vận động viên'),
+  ('coach',     'Huấn luyện viên'),
   ('spectator', 'Khán giả');
 
 INSERT INTO permissions (code, label) VALUES
@@ -40,13 +41,14 @@ WHERE (r.code = 'admin')
 --   khangia@shuttleops.vn    / fan123
 -- -----------------------------------------------------------------------------
 INSERT INTO users (email, phone, password_hash, name, primary_role_id, status) VALUES
-  ('admin@shuttleops.vn',         NULL,         '$2b$10$placeholderHashForAdmin000000000000000000', 'Admin',           (SELECT id FROM roles WHERE code='admin'),     'approved'),
-  ('phamlam@shuttleops.vn',       '0901234567', '$2b$10$placeholderHashForBtc0000000000000000000000', 'Phạm Lâm',        (SELECT id FROM roles WHERE code='btc'),       'approved'),
-  ('lequanghuy@shuttleops.vn',    '0912345678', '$2b$10$placeholderHashForRef0000000000000000000000', 'Lê Quang Huy',    (SELECT id FROM roles WHERE code='referee'),   'approved'),
-  ('nguyenhaidang@shuttleops.vn', '0923456789', '$2b$10$placeholderHashForVdv0000000000000000000000', 'Nguyễn Hải Đăng', (SELECT id FROM roles WHERE code='athlete'),   'approved'),
-  ('khangia@shuttleops.vn',       NULL,         '$2b$10$placeholderHashForFan0000000000000000000000', 'Khán giả',        (SELECT id FROM roles WHERE code='spectator'), 'approved'),
-  ('tranvanminh@example.com',     '0934567890', '$2b$10$placeholderHashForTest000000000000000000000', 'Trần Văn Minh',   NULL,                                          'pending'),
-  ('lethilan@example.com',        '0945678901', '$2b$10$placeholderHashForTest000000000000000000000', 'Lê Thị Lan',      NULL,                                          'pending');
+  ('admin@shuttleops.vn',         NULL,         '$2b$10$iOdKfujT828I9hQIP5WJKeTR1Oi8LqwvinDjiTDiwxLm5wh1Bk7lq', 'Admin',           (SELECT id FROM roles WHERE code='admin'),     'approved'),
+  ('phamlam@shuttleops.vn',       '0901234567', '$2b$10$Wr0zPIAvcqNr71qJUyqdG.NjPZDu1LEyNUZUqruRC.GZkSx0HhZX2', 'Phạm Lâm',        (SELECT id FROM roles WHERE code='btc'),       'approved'),
+  ('lequanghuy@shuttleops.vn',    '0912345678', '$2b$10$2aijmr8QlNTJZY.SbXC/B.DQvA44GXDXY1mz.rKjJWfHkynnMNJPS', 'Lê Quang Huy',    (SELECT id FROM roles WHERE code='referee'),   'approved'),
+  ('nguyenhaidang@shuttleops.vn', '0923456789', '$2b$10$AZIiyQSaMGTRZsjlVyYrleaKe.ijttZLse1T7qD2ivCC/sa9mE6aG', 'Nguyễn Hải Đăng', (SELECT id FROM roles WHERE code='athlete'),   'approved'),
+  ('truongdoan@shuttleops.vn',    '0955555555', '$2b$10$AZIiyQSaMGTRZsjlVyYrleaKe.ijttZLse1T7qD2ivCC/sa9mE6aG', 'Trưởng Đoàn',      (SELECT id FROM roles WHERE code='coach'),     'approved'),
+  ('khangia@shuttleops.vn',       NULL,         '$2b$10$qKZwjMM5hedQjPXCQP5x8u53EVYOddiRLobHhlZ43w/ocI0q9Bovm', 'Khán giả',        (SELECT id FROM roles WHERE code='spectator'), 'approved'),
+  ('tranvanminh@example.com',     '0934567890', '$2b$10$4b0aV7MlmFfdTZX2fboT2.Nm/dtuQBSBsMmeM8w8nryPZuiUVKfJ.', 'Trần Văn Minh',   NULL,                                          'pending'),
+  ('lethilan@example.com',        '0945678901', '$2b$10$4b0aV7MlmFfdTZX2fboT2.Nm/dtuQBSBsMmeM8w8nryPZuiUVKfJ.', 'Lê Thị Lan',      NULL,                                          'pending');
 
 -- Gán user_roles (mirror primary_role)
 INSERT INTO user_roles (user_id, role_id)
@@ -159,13 +161,13 @@ FROM tournaments t JOIN events e ON e.tournament_id = t.id
 WHERE t.code='VNBAD-2026-03' AND e.category_code='MS';
 
 INSERT INTO match_participants (match_id, side, player_id, seed)
-SELECT m.id, 'A', p.id, 3 FROM matches m JOIN players p ON p.code='A-0142' WHERE m.code='#184'
+SELECT m.id, 'A'::side_t, p.id, 3 FROM matches m JOIN players p ON p.code='A-0142' WHERE m.code='#184'
 UNION ALL
-SELECT m.id, 'B', p.id, NULL FROM matches m JOIN players p ON p.code='A-0147' WHERE m.code='#184';
+SELECT m.id, 'B'::side_t, p.id, NULL FROM matches m JOIN players p ON p.code='A-0147' WHERE m.code='#184';
 
 INSERT INTO match_sets (match_id, set_no, score_a, score_b, winner)
-SELECT m.id, 1, 21, 18, 'A' FROM matches m WHERE m.code='#184'
-UNION ALL SELECT m.id, 2, 14, 21, 'B' FROM matches m WHERE m.code='#184'
+SELECT m.id, 1, 21, 18, 'A'::side_t FROM matches m WHERE m.code='#184'
+UNION ALL SELECT m.id, 2, 14, 21, 'B'::side_t FROM matches m WHERE m.code='#184'
 UNION ALL SELECT m.id, 3, 17, 14, NULL FROM matches m WHERE m.code='#184';
 
 -- -----------------------------------------------------------------------------

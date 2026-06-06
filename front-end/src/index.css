@@ -129,6 +129,11 @@ button {
 .scrollbar::-webkit-scrollbar-track { background: var(--paper-2); }
 .scrollbar::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
 
+.drop-zone.drag-over {
+  background: var(--paper-2);
+  border: 1px dashed var(--accent) !important;
+}
+
 .court-placeholder {
   background: var(--paper-3); border: 1px dashed var(--line); border-radius: 6px;
   display: flex; align-items: center; justify-content: center;

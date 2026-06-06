@@ -1,6 +1,5 @@
 import { useReducer, useEffect, useRef } from 'react';
 import type { MatchState, MatchAction, HistoryEntry, SetScore } from '../types';
-import { INITIAL_MATCH } from '../data/mock';
 
 const SETS_TO_WIN = 2;
 const POINTS_TO_WIN = 21;
@@ -21,7 +20,10 @@ export function isGamePoint(p1: number, p2: number): 'p1' | 'p2' | null {
 
 const initialState: MatchState = {
   phase: 'pre',
-  ...INITIAL_MATCH,
+  court: '',
+  tournament: '',
+  p1: { id: '', name: 'Đang tải...' },
+  p2: { id: '', name: 'Đang tải...' },
   serving: 'p1',
   currentSet: { p1: 0, p2: 0 },
   completedSets: [],
@@ -130,21 +132,93 @@ function reducer(state: MatchState, action: MatchAction): MatchState {
   }
 }
 
-export function useMatch() {
-  const [state, dispatch] = useReducer(reducer, initialState);
+export function useMatch(matchData?: any) {
+  // Compute initial state from matchData if provided
+  let computedInitial = initialState
+  if (matchData) {
+    const sideA = matchData.participants?.find((p: any) => p.side === 'A')
+    const sideB = matchData.participants?.find((p: any) => p.side === 'B')
+    
+    // Convert sets to completedSets
+    const completedSets = (matchData.sets || []).map((s: any) => ({
+      p1: s.score_a,
+      p2: s.score_b,
+      winner: s.score_a > s.score_b ? 'p1' : 'p2'
+    }))
+    
+    const setsWon = {
+      p1: completedSets.filter((s: any) => s.winner === 'p1').length,
+      p2: completedSets.filter((s: any) => s.winner === 'p2').length
+    }
+    
+    computedInitial = {
+      ...initialState,
+      tournament: matchData.event_label || 'Giải đấu',
+      court: String(matchData.court_label || '1'),
+      p1: { id: sideA?.player?.id || 1, name: sideA?.player?.name || 'VĐV 1' },
+      p2: { id: sideB?.player?.id || 2, name: sideB?.player?.name || 'VĐV 2' },
+      phase: matchData.status === 'live' ? 'scoring' : matchData.status === 'completed' ? 'match-end' : 'pre',
+      completedSets,
+      setsWon,
+    }
+  }
+
+  const [state, dispatchRaw] = useReducer(reducer, computedInitial);
   const undoTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const dispatch = (action: MatchAction) => {
+    dispatchRaw(action)
+
+    // Side effects for API syncing
+    if (!matchData) return
+
+    import('../data/api').then(({ competitionApi }) => {
+      const pushToQueue = (req: any) => {
+        const queue = JSON.parse(localStorage.getItem('referee_sync_queue') || '[]')
+        queue.push({ ...req, timestamp: new Date().toISOString() })
+        localStorage.setItem('referee_sync_queue', JSON.stringify(queue))
+        window.dispatchEvent(new Event('sync_queue_updated'))
+      }
+
+      const safeCall = async (req: any, apiCall: Promise<any>) => {
+        if (!navigator.onLine) {
+          pushToQueue(req)
+          return
+        }
+        try {
+          await apiCall
+        } catch (err) {
+          pushToQueue(req)
+        }
+      }
+
+      try {
+        if (action.type === 'START_MATCH') {
+          safeCall({ type: 'START_MATCH', matchId: matchData.id }, competitionApi.startMatch(matchData.id))
+        } else if (action.type === 'SCORE') {
+          const payload = {
+            scorerSide: action.player === 'p1' ? 'A' : 'B',
+            timestamp: new Date().toISOString()
+          }
+          safeCall({ type: 'SCORE', matchId: matchData.id, payload }, competitionApi.addScoreEvent(matchData.id, payload))
+        } else if (action.type === 'UNDO') {
+          safeCall({ type: 'UNDO', matchId: matchData.id }, competitionApi.undoScore(matchData.id))
+        }
+      } catch (err) {}
+    })
+  }
 
   useEffect(() => {
     if (state.undoVisible) {
       clearTimeout(undoTimer.current);
-      undoTimer.current = setTimeout(() => dispatch({ type: 'HIDE_UNDO' }), 8000);
+      undoTimer.current = setTimeout(() => dispatchRaw({ type: 'HIDE_UNDO' }), 8000);
     }
     return () => clearTimeout(undoTimer.current);
   }, [state.undoVisible, state.history.length]);
 
   useEffect(() => {
     if (state.phase !== 'scoring') return;
-    const id = setInterval(() => dispatch({ type: 'TICK' }), 1000);
+    const id = setInterval(() => dispatchRaw({ type: 'TICK' }), 1000);
     return () => clearInterval(id);
   }, [state.phase]);
 

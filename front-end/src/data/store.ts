@@ -1,8 +1,9 @@
-import { useSyncExternalStore } from 'react'
+import { create } from 'zustand'
 import {
-  TOURNAMENT, COURTS, LIVE_MATCHES, UPCOMING, ATHLETES, NEWS,
+  TOURNAMENT_DEFAULT, COURTS_DEFAULT, type Tournament,
   type Court, type LiveMatch, type UpcomingMatch, type Athlete, type NewsItem,
-} from './legacy'
+} from './constants'
+import { authApi, peopleApi, tournamentApi, paymentApi, reportingApi, competitionApi } from './api'
 
 // ── Extra domain types ────────────────────────────────────────────────────────
 
@@ -30,6 +31,7 @@ export type Transaction = {
   desc: string
   cat: 'Thu' | 'Chi'
   amt: number
+  budgetLine?: string
 }
 
 export type ActivityEntry = {
@@ -41,7 +43,8 @@ export type ActivityEntry = {
 // ── Store shape ───────────────────────────────────────────────────────────────
 
 export type StoreState = {
-  tournament: typeof TOURNAMENT
+  activeTournamentId: number | string | null
+  tournament: Tournament
   courts: Court[]
   liveMatches: LiveMatch[]
   upcomingMatches: UpcomingMatch[]
@@ -55,87 +58,39 @@ export type StoreState = {
 
 // ── Seed data (extracted from static views) ───────────────────────────────────
 
-const SEED_INVENTORY: InventoryItem[] = [
-  { sku: 'SH-VIC-AS30', name: 'Victor AS-30 · tournament grade',    stock: 132, min: 80,  issued: 28, status: 'ok'       },
-  { sku: 'SH-YNX-AS50', name: 'Yonex AS-50 · tournament grade',     stock: 96,  min: 80,  issued: 34, status: 'warn'     },
-  { sku: 'SH-YNX-M300', name: 'Yonex Mavis 300 · plastic (warmup)', stock: 84,  min: 40,  issued: 12, status: 'ok'       },
-  { sku: 'SH-LIN-A200', name: 'Li-Ning A+200 · training',           stock: 100, min: 60,  issued: 13, status: 'ok'       },
-  { sku: 'GR-BGY-65',   name: 'Yonex BG65 · dây vợt',              stock: 22,  min: 30,  issued: 4,  status: 'critical' },
-  { sku: 'TW-STD',      name: 'Khăn lau sân · hộp 50',             stock: 18,  min: 20,  issued: 6,  status: 'warn'     },
-]
-
-const SEED_REFEREES: Referee[] = [
-  { id: 'R-01', name: 'Lê Quang Huy',     cert: 'Quốc gia A', assigned: 3, today: 1 },
-  { id: 'R-02', name: 'Nguyễn Hồng Sơn',  cert: 'Quốc gia A', assigned: 2, today: 1 },
-  { id: 'R-03', name: 'Trịnh Quốc Hưng',  cert: 'Quốc gia B', assigned: 4, today: 2 },
-  { id: 'R-04', name: 'Phạm Thành Long',   cert: 'Quốc gia B', assigned: 2, today: 1 },
-  { id: 'R-05', name: 'Hoàng Mai',         cert: 'Quốc gia A', assigned: 3, today: 1 },
-  { id: 'R-06', name: 'Đinh Văn Khoa',     cert: 'Quốc gia B', assigned: 3, today: 1 },
-]
-
-const SEED_TRANSACTIONS: Transaction[] = [
-  { t: '18/04', desc: 'Lệ phí đăng ký · VNPay · 14 giao dịch',   cat: 'Thu', amt:   7_000_000 },
-  { t: '18/04', desc: 'Lệ phí đăng ký · Momo · 9 giao dịch',     cat: 'Thu', amt:   4_500_000 },
-  { t: '17/04', desc: 'Chi phí vật tư · cầu Yonex (200 ống)',     cat: 'Chi', amt:  -48_000_000 },
-  { t: '17/04', desc: 'Tiền thưởng Huy chương (50%)',             cat: 'Chi', amt:  -65_000_000 },
-  { t: '16/04', desc: 'Thuê nhà thi đấu · 9 ngày',                cat: 'Chi', amt: -270_000_000 },
-  { t: '15/04', desc: 'Tài trợ · Yonex Vietnam',                  cat: 'Thu', amt:  250_000_000 },
-  { t: '15/04', desc: 'Tài trợ · Victor Asia',                    cat: 'Thu', amt:  180_000_000 },
-  { t: '14/04', desc: 'Phí trọng tài · 28 người × 9 ngày',       cat: 'Chi', amt: -126_000_000 },
-]
-
-const SEED_ACTIVITY: ActivityEntry[] = [
-  { t: '14:52', who: 'Trọng tài Lê Quang Huy',     msg: 'xác nhận set 2 trận #184 · 21-14' },
-  { t: '14:48', who: 'BTC',                         msg: 'phê duyệt hồ sơ A-0201 · Phạm Lê Hoàng' },
-  { t: '14:45', who: 'Hệ thống',                   msg: 'cảnh báo tồn kho cầu Victor AS-30 sắp xuống dưới mức' },
-  { t: '14:40', who: 'BTC',                         msg: 'hoán đổi sân 7 → 8 cho trận #189 · xung đột trọng tài' },
-  { t: '14:32', who: 'VĐV-0146',                   msg: 'nộp kháng nghị trận #179 · video đính kèm' },
-  { t: '14:25', who: 'Trọng tài Nguyễn Hồng Sơn',  msg: 'đồng bộ 2 cập nhật ngoại tuyến' },
-  { t: '14:10', who: 'VNPay',                       msg: 'xác nhận 14 giao dịch lệ phí đăng ký · +7.000.000 ₫' },
-]
+const SEED_INVENTORY: InventoryItem[] = []
+const SEED_REFEREES: Referee[] = []
+const SEED_TRANSACTIONS: Transaction[] = []
+const SEED_ACTIVITY: ActivityEntry[] = []
 
 function createInitialState(): StoreState {
   return {
-    tournament: { ...TOURNAMENT },
-    courts: COURTS.map(c => ({ ...c })),
-    liveMatches: LIVE_MATCHES.map(m => ({ ...m })),
-    upcomingMatches: UPCOMING.map(m => ({ ...m })),
-    athletes: ATHLETES.map(a => ({ ...a })),
-    news: NEWS.map(n => ({ ...n })),
-    inventory: SEED_INVENTORY.map(i => ({ ...i })),
-    referees: SEED_REFEREES.map(r => ({ ...r })),
-    transactions: SEED_TRANSACTIONS.map(t => ({ ...t })),
-    activityLog: SEED_ACTIVITY.map(a => ({ ...a })),
+    activeTournamentId: null,
+    tournament: { ...TOURNAMENT_DEFAULT },
+    courts: [...COURTS_DEFAULT],
+    liveMatches: [],
+    upcomingMatches: [],
+    athletes: [],
+    news: [],
+    inventory: [],
+    referees: [],
+    transactions: [],
+    activityLog: [],
   }
 }
 
 // ── Store internals ───────────────────────────────────────────────────────────
 
-let state: StoreState = createInitialState()
-const subscribers = new Set<() => void>()
+const useStoreBase = create<StoreState>(() => createInitialState())
 
-function notify() {
-  subscribers.forEach(fn => fn())
-}
+export const useStore = useStoreBase
 
 function setState(updater: (prev: StoreState) => StoreState) {
-  state = updater(state)
-  notify()
+  useStoreBase.setState(updater)
 }
 
-// ── React integration ─────────────────────────────────────────────────────────
-
-function subscribe(fn: () => void): () => void {
-  subscribers.add(fn)
-  return () => { subscribers.delete(fn) }
-}
-
-function getSnapshot(): StoreState {
-  return state
-}
-
-export function useStore(): StoreState {
-  return useSyncExternalStore(subscribe, getSnapshot)
+export function setActiveTournament(id: number | string | null) {
+  useStoreBase.setState({ activeTournamentId: id })
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
@@ -193,7 +148,7 @@ export function resolveConflict(matchId: number, newCourt: number) {
 
 // ── Mutators: Athletes ────────────────────────────────────────────────────────
 
-export function approveAthleteProfile(athleteId: string) {
+export async function approveAthleteProfile(athleteId: string) {
   setState(prev => ({
     ...prev,
     athletes: prev.athletes.map(a =>
@@ -201,9 +156,15 @@ export function approveAthleteProfile(athleteId: string) {
     ),
   }))
   pushActivity('BTC', `phê duyệt hồ sơ VĐV ${athleteId}`)
+  try {
+    await peopleApi.updatePlayer(athleteId, { profileStatus: 'approved' })
+  } catch (e) {
+    console.error('Failed to approve athlete via API', e)
+  }
+  await fetchAthletes()
 }
 
-export function rejectAthleteProfile(athleteId: string, note?: string) {
+export async function rejectAthleteProfile(athleteId: string, note?: string) {
   setState(prev => ({
     ...prev,
     athletes: prev.athletes.map(a =>
@@ -211,11 +172,12 @@ export function rejectAthleteProfile(athleteId: string, note?: string) {
     ),
   }))
   pushActivity('BTC', `từ chối hồ sơ VĐV ${athleteId}`)
+  await fetchAthletes()
 }
 
 // ── Mutators: Inventory ───────────────────────────────────────────────────────
 
-export function addStock(sku: string, qty: number) {
+export async function addStock(sku: string, qty: number) {
   setState(prev => {
     const inventory = prev.inventory.map(it => {
       if (it.sku !== sku) return it
@@ -232,18 +194,38 @@ export function addStock(sku: string, qty: number) {
     }
   })
   pushActivity('BTC', `nhập kho ${qty} × ${sku}`)
+  try {
+    const item = useStoreBase.getState().inventory.find(i => i.sku === sku)
+    if (item) {
+      await reportingApi.updateInventory(sku, { stock: item.stock })
+    }
+  } catch (e) {
+    console.error('Failed to update inventory via API', e)
+  }
+  await fetchInventoryData()
 }
 
-export function addNewInventoryItem(item: Omit<InventoryItem, 'status'>) {
+export async function addNewInventoryItem(item: Omit<InventoryItem, 'status'>) {
+  try {
+    await reportingApi.createInventory({
+      sku: item.sku,
+      name: item.name,
+      minStock: item.min,
+      initialStock: item.stock
+    })
+  } catch (e) {
+    console.error('Failed to create inventory via API', e)
+  }
   const status = calcInventoryStatus(item.stock, item.min)
   setState(prev => ({
     ...prev,
     inventory: [...prev.inventory, { ...item, status }],
   }))
   pushActivity('BTC', `thêm vật tư mới ${item.sku} · tồn ${item.stock}`)
+  await fetchInventoryData()
 }
 
-export function issueShuttles(sku: string, qty: number, matchId?: number) {
+export async function issueShuttles(sku: string, qty: number, matchId?: number) {
   setState(prev => {
     const inventory = prev.inventory.map(it => {
       if (it.sku !== sku) return it
@@ -264,6 +246,12 @@ export function issueShuttles(sku: string, qty: number, matchId?: number) {
     }
   })
   pushActivity('BTC', `cấp phát ${qty} × ${sku}${matchId ? ` cho trận #${matchId}` : ''}`)
+  try {
+    await reportingApi.issueInventory(sku, { qty, matchId })
+  } catch (e) {
+    console.error('Failed to issue inventory via API', e)
+  }
+  await fetchInventoryData()
 }
 
 // ── Mutators: Referees ────────────────────────────────────────────────────────
@@ -280,23 +268,43 @@ export function assignReferee(refereeId: string, matchId: number) {
 
 // ── Mutators: News ────────────────────────────────────────────────────────────
 
-export function addNewsItem(item: Omit<NewsItem, 'id'>) {
+export async function addNewsItem(item: Omit<NewsItem, 'id'>) {
   const id = `N-${Date.now()}`
   setState(prev => ({
     ...prev,
     news: [{ id, ...item }, ...prev.news],
   }))
   pushActivity('BTC', `đăng bài viết mới · "${item.title}"`)
+  try {
+    await reportingApi.createNews({ title: item.title, tag: item.tag })
+  } catch (e) {
+    console.error('Failed to create news via API', e)
+  }
+  await fetchNews()
 }
 
 // ── Mutators: Finance ─────────────────────────────────────────────────────────
 
-export function addTransaction(tx: Transaction) {
+export async function addTransaction(tx: any) {
   setState(prev => ({
     ...prev,
     transactions: [tx, ...prev.transactions],
   }))
   pushActivity('BTC', `giao dịch ${tx.cat} ${tx.amt > 0 ? '+' : ''}${tx.amt.toLocaleString('vi-VN')} · ${tx.desc}`)
+  try {
+    await paymentApi.createExpense({ 
+      amount: tx.amt, 
+      desc: tx.desc, 
+      date: tx.t,
+      invoice: tx.invoiceNo,
+      method: tx.method,
+      budgetLineId: tx.budgetLine,
+      status: tx.status
+    })
+  } catch (e) {
+    console.error('Failed to create expense via API', e)
+  }
+  await fetchFinance()
 }
 
 // ── Mutators: Tournament settings ─────────────────────────────────────────────
@@ -312,6 +320,265 @@ export function updateTournamentVenue(venue: string) {
 // ── Dev util ──────────────────────────────────────────────────────────────────
 
 export function resetStore() {
-  state = createInitialState()
-  notify()
+  useStoreBase.setState(createInitialState())
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FETCH FUNCTIONS — Pull data from real API
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function fetchDashboard(tournamentId?: number | string) {
+  const id = tournamentId || useStoreBase.getState().activeTournamentId
+  if (!id) return
+
+  try {
+    const data = await tournamentApi.getDashboard(id)
+    setState(prev => ({
+      ...prev,
+      tournament: {
+        ...prev.tournament,
+        id: String(id),
+        name: data.tournament?.name || prev.tournament.name,
+        venue: data.tournament?.venue_name ? `${data.tournament.venue_name}` : prev.tournament.venue,
+        start: data.tournament?.start_date || prev.tournament.start,
+        end: data.tournament?.end_date || prev.tournament.end,
+        budget: Number(data.tournament?.budget) || prev.tournament.budget,
+        revenue: Number(data.tournament?.revenue) || prev.tournament.revenue,
+        matches: {
+          total: data.stats.matches.total,
+          done: data.stats.matches.completed,
+          live: data.stats.matches.live,
+          next: data.stats.matches.upcoming,
+        },
+        registered: data.stats.totalPlayers,
+        approved: data.stats.totalPlayers, // approximation
+        courts: data.stats.totalCourts || prev.tournament.courts,
+        events: data.events && data.events.length > 0 ? data.events.map((e: any) => ({
+          id: e.id,
+          categoryCode: e.category_code,
+          label: e.label || e.category_code
+        })) : prev.tournament.events,
+      },
+      courts: (data.courts || []).map((c: any) => ({
+        id: c.id,
+        label: c.label,
+        floor: c.floor || 'PVC',
+        status: c.status || 'idle',
+        match: null,
+      })),
+    }))
+  } catch (e) {
+    console.error('Failed to fetch dashboard', e)
+  }
+}
+
+export async function fetchAthletes() {
+  try {
+    const data = await peopleApi.listPlayers({ limit: 100 })
+    // API response: { data: items[], meta: { page, limit, total } }
+    const items = data.data || []
+    setState(prev => ({
+      ...prev,
+      athletes: items.map((p: any) => ({
+        id: p.code || String(p.id),
+        name: p.name,
+        club: p.club_name || 'Tự do',
+        gender: p.gender || 'M',
+        dob: p.dob || '2000',
+        rating: p.rating || 0,
+        tier: p.tier || undefined,
+        status: p.profile_status === 'approved' ? 'approved' 
+             : p.profile_status === 'incomplete' ? 'incomplete' 
+             : 'pending',
+      }))
+    }))
+  } catch (e) {
+    console.error('Failed to fetch athletes', e)
+  }
+}
+
+export async function fetchFinance() {
+  try {
+    const data = await paymentApi.list({ limit: 100 })
+    // API response: { data: items[], meta }
+    const items = data.data || []
+    setState(prev => ({
+      ...prev,
+      transactions: items.map((p: any) => ({
+        t: new Date(p.created_at).toLocaleDateString('vi-VN'),
+        desc: p.purpose === 'other' ? (p.note || '') : (p.event_label ? `Lệ phí: ${p.event_label}` : 'Lệ phí đăng ký'),
+        cat: Number(p.amount) > 0 ? 'Thu' as const : 'Chi' as const,
+        amt: Number(p.amount),
+        budgetLine: p.budget_line_id || undefined
+      }))
+    }))
+  } catch (e) {
+    console.error('Failed to fetch finance', e)
+  }
+}
+
+export async function fetchInventoryData() {
+  try {
+    // reportingApi.getInventory returns array directly (wrapped in { data: [...] })
+    const items = await reportingApi.getInventory()
+    const list = Array.isArray(items) ? items : []
+    setState(prev => ({
+      ...prev,
+      inventory: list.map((i: any) => ({
+        sku: i.sku,
+        name: i.name,
+        stock: Number(i.stock),
+        min: Number(i.min_stock),
+        issued: Number(i.issued) || 0,
+        status: (i.status as InventoryStatus) || calcInventoryStatus(Number(i.stock), Number(i.min_stock)),
+      })),
+      tournament: {
+        ...prev.tournament,
+        shuttles: {
+          ...prev.tournament.shuttles,
+          stock: list.reduce((sum: number, i: any) => sum + Number(i.stock), 0),
+        },
+      },
+    }))
+  } catch (e) {
+    console.error('Failed to fetch inventory', e)
+  }
+}
+
+export async function fetchActivityLog() {
+  try {
+    const data = await reportingApi.getActivityLog({ limit: 50 })
+    // API response: { data: items[], meta }
+    const items = data.data || []
+    setState(prev => ({
+      ...prev,
+      activityLog: items.map((l: any) => ({
+        t: new Date(l.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        who: l.actor_name || 'Hệ thống',
+        msg: l.message || l.action || '',
+      }))
+    }))
+  } catch (e) {
+    console.error('Failed to fetch activity log', e)
+  }
+}
+
+export async function fetchMatches(tournamentId?: number | string) {
+  const id = tournamentId || useStoreBase.getState().activeTournamentId
+  if (!id) return
+
+  try {
+    const data = await competitionApi.listMatches({ tournament_id: id, limit: 100 })
+    // API response: { data: items[], meta }
+    const items = data.data || []
+    setState(prev => {
+      const live: LiveMatch[] = []
+      const upc: UpcomingMatch[] = []
+      items.forEach((m: any) => {
+        // Extract participants by side
+        const sideA = (m.participants || []).filter((p: any) => p.side === 'A')
+        const sideB = (m.participants || []).filter((p: any) => p.side === 'B')
+        const playerA = sideA[0]?.player || { name: 'TBD', club: '', code: '' }
+        const playerB = sideB[0]?.player || { name: 'TBD', club: '', code: '' }
+
+        // Map sets to score arrays
+        const sets = (m.sets || []).map((s: any) => [s.score_a, s.score_b])
+        const courtNum = m.court_label?.replace('Sân ', '') || '0'
+
+        if (m.status === 'live') {
+          live.push({
+            id: m.id,
+            court: Number(courtNum),
+            cat: m.category_code || m.event_label || '',
+            round: m.round || '',
+            a: { name: playerA.name, club: playerA.club || '', seed: sideA[0]?.seed || null },
+            b: { name: playerB.name, club: playerB.club || '', seed: sideB[0]?.seed || null },
+            sets,
+            current: sets.length > 0 ? sets.length - 1 : 0,
+            umpire: m.referee_name || 'Chưa xếp',
+            start: m.started_at ? new Date(m.started_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '',
+            elapsed: m.started_at ? formatElapsed(new Date(m.started_at)) : '0:00',
+          })
+        }
+        if (m.status === 'upcoming') {
+          upc.push({
+            id: m.id,
+            t: m.scheduled_at ? new Date(m.scheduled_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--',
+            court: Number(courtNum),
+            cat: m.category_code || m.event_label || '',
+            round: m.round || '',
+            a: playerA.name,
+            b: playerB.name,
+          })
+        }
+      })
+      return { ...prev, liveMatches: live, upcomingMatches: upc }
+    })
+  } catch (e) {
+    console.error('Failed to fetch matches', e)
+  }
+}
+
+export async function fetchNews() {
+  try {
+    const data = await reportingApi.getNews({ limit: 20 })
+    // API response: { data: items[], meta }
+    const items = data.data || []
+    setState(prev => ({
+      ...prev,
+      news: items.map((n: any) => ({
+        id: String(n.id),
+        title: n.title || '',
+        ts: n.published_at ? new Date(n.published_at).toLocaleDateString('vi-VN') : '',
+        tag: n.tag || 'Tin tức',
+      }))
+    }))
+  } catch (e) {
+    console.error('Failed to fetch news', e)
+  }
+}
+
+export async function fetchReferees() {
+  try {
+    const items = await peopleApi.listReferees()
+    const list = Array.isArray(items) ? items : []
+    setState(prev => ({
+      ...prev,
+      referees: list.map((r: any) => ({
+        id: String(r.id),
+        name: r.name,
+        cert: r.cert || 'QG_B',
+        assigned: 0,
+        today: 0,
+      }))
+    }))
+  } catch (e) {
+    console.error('Failed to fetch referees', e)
+  }
+}
+
+// ── Helper: format elapsed time ───────────────────────────────────────────────
+function formatElapsed(start: Date): string {
+  const diff = Math.floor((Date.now() - start.getTime()) / 1000)
+  const min = Math.floor(diff / 60)
+  const sec = diff % 60
+  return `${min}:${String(sec).padStart(2, '0')}`
+}
+
+// ── Init all BTC data ─────────────────────────────────────────────────────────
+export async function initBtcData(tournamentId?: number | string) {
+  const id = tournamentId || useStoreBase.getState().activeTournamentId
+  if (!id) return
+
+  await Promise.allSettled([
+    fetchDashboard(id),
+    fetchAthletes(),
+    fetchFinance(),
+    fetchInventoryData(),
+    fetchActivityLog(),
+    fetchMatches(id),
+    fetchNews(),
+    fetchReferees(),
+  ])
 }

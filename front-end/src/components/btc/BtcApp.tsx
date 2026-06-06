@@ -1,17 +1,21 @@
-import { useState, createContext, useContext } from 'react'
+import { useState, createContext, useContext, useEffect } from 'react'
 import Icon from '../shared/Icon'
 import {
   DashboardView, ScheduleView, BracketView, AthletesView,
   CourtsView, InventoryView, FinanceView, ReportsView,
   RefereesView, NewsView, SettingsView,
 } from './BtcViews'
+import {
+  useStore, setActiveTournament, initBtcData
+} from '../../data/store'
+import TournamentHub from '../../features/tournament/TournamentHub'
 
 export type BtcNavId =
   | 'dashboard' | 'schedule' | 'bracket' | 'athletes'
   | 'courts' | 'inventory' | 'finance' | 'reports'
   | 'referees' | 'news' | 'settings'
 
-export const BtcNavContext = createContext<(id: BtcNavId) => void>(() => {})
+const BtcNavContext = createContext<(id: BtcNavId) => void>(() => {})
 
 type NavId = BtcNavId
 
@@ -53,7 +57,23 @@ export function useBtcNav() {
 
 export default function BtcApp({ onLogout }: Props) {
   const [active, setActive] = useState<NavId>('dashboard')
+  const activeTournamentId = useStore(state => state.activeTournamentId)
   const ActiveView = VIEW_MAP[active]
+
+  useEffect(() => {
+    if (!activeTournamentId) return
+    initBtcData()
+
+    const intervalId = setInterval(() => {
+      initBtcData()
+    }, 15000)
+
+    return () => clearInterval(intervalId)
+  }, [activeTournamentId])
+
+  if (!activeTournamentId) {
+    return <TournamentHub />
+  }
 
   return (
     <BtcNavContext.Provider value={setActive}>
@@ -198,6 +218,23 @@ export default function BtcApp({ onLogout }: Props) {
           >
             <Icon name="log-out" size={13}/>
             Đăng xuất
+          </button>
+          
+          <button
+            onClick={() => setActiveTournament(null)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              width: '100%', padding: '7px 10px', marginTop: 8,
+              background: 'transparent', border: '1px dashed var(--line)',
+              borderRadius: 6, color: 'var(--ink-2)',
+              fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
+              transition: 'background 120ms',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--paper-3)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+          >
+            <Icon name="award" size={13}/>
+            Đổi giải đấu
           </button>
         </div>
       </aside>

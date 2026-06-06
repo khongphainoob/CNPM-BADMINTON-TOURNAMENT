@@ -25,6 +25,7 @@ export default function Icon({ name, size = 16, stroke = 1.6, style }: IconProps
     bell:         <><path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16z"/><path d="M10 20a2 2 0 0 0 4 0"/></>,
     wallet:       <><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M16 13h3"/><path d="M2 10h20"/></>,
     chart:        <><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="4" width="3" height="14"/></>,
+    'pie-chart':  <><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></>,
     box:          <><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4"/><path d="M12 11v10"/></>,
     search:       <><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></>,
     filter:       <><path d="M3 5h18l-7 8v6l-4-2v-4z"/></>,
@@ -57,6 +58,8 @@ export default function Icon({ name, size = 16, stroke = 1.6, style }: IconProps
     'layout-dashboard': <><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></>,
     'git-branch': <><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v1a3 3 0 0 0 3 3h6a3 3 0 0 1 3 3"/><line x1="6" y1="9" x2="6" y2="21"/></>,
     info:         <><circle cx="12" cy="12" r="9"/><path d="M12 8v1"/><path d="M12 11v5"/></>,
+    award:        <><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></>,
+    activity:     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>,
   }
   return <svg {...p}>{paths[name] ?? null}</svg>
 }

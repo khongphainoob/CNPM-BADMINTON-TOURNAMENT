@@ -23,7 +23,7 @@ CREATE TYPE tournament_status  AS ENUM ('draft','live','finished','cancelled');
 CREATE TYPE court_status_t     AS ENUM ('live','idle','maintenance');
 CREATE TYPE match_status_t     AS ENUM ('upcoming','live','completed','cancelled');
 CREATE TYPE side_t             AS ENUM ('A','B');
-CREATE TYPE participant_status AS ENUM ('registered','checked_in','withdrawn');
+CREATE TYPE participant_status AS ENUM ('pending', 'pending_partner', 'registered', 'approved', 'rejected', 'supplement_required', 'checked_in', 'withdrawn');
 CREATE TYPE notif_channel_t    AS ENUM ('in_app','email','sms');
 CREATE TYPE notif_status_t     AS ENUM ('pending','sent','failed','read');
 CREATE TYPE payment_purpose_t  AS ENUM ('registration_fee','sponsor','refund','prize','other');
@@ -114,6 +114,8 @@ CREATE TABLE players (
   dob            DATE,
   rating         INT NOT NULL DEFAULT 0,
   tier           CHAR(1),                   -- A/B/C
+  cccd           VARCHAR(20),
+  photo_url      TEXT,
   profile_status player_profile_st NOT NULL DEFAULT 'pending',
   note           TEXT,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -175,6 +177,7 @@ CREATE TABLE tournaments (
   format      VARCHAR(128),
   budget      BIGINT  NOT NULL DEFAULT 0,
   revenue     BIGINT  NOT NULL DEFAULT 0,
+  created_by  BIGINT REFERENCES users(id),
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT chk_tour_dates CHECK (end_date >= start_date)
@@ -189,6 +192,12 @@ CREATE TABLE events (
   label           VARCHAR(128),
   max_sets        SMALLINT NOT NULL DEFAULT 3 CHECK (max_sets IN (1,3,5)),
   points_per_set  SMALLINT NOT NULL DEFAULT 21 CHECK (points_per_set BETWEEN 11 AND 30),
+  content_type    VARCHAR(32),
+  gender          VARCHAR(32),
+  age_group       VARCHAR(64),
+  max_participants SMALLINT NOT NULL DEFAULT 64,
+  registration_start TIMESTAMPTZ,
+  registration_end TIMESTAMPTZ,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (tournament_id, category_code)
 );
@@ -326,6 +335,8 @@ CREATE TABLE payments (
   currency              CHAR(3) NOT NULL DEFAULT 'VND',
   purpose               payment_purpose_t NOT NULL,
   status                payment_status_t  NOT NULL DEFAULT 'pending',
+  budget_line_id        VARCHAR(32),
+  note                  TEXT,
   created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
   paid_at               TIMESTAMPTZ
 );
@@ -394,6 +405,9 @@ CREATE TABLE news (
   title         VARCHAR(255) NOT NULL,
   body          TEXT,
   tag           VARCHAR(32),
+  slug          VARCHAR(255),
+  thumbnail_url VARCHAR(1024),
+  status        VARCHAR(32) DEFAULT 'draft',
   published_at  TIMESTAMPTZ,
   created_by    BIGINT REFERENCES users(id) ON DELETE SET NULL,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
