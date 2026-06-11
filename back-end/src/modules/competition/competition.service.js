@@ -340,13 +340,69 @@ export async function listScoreEvents(matchId) {
 
 export async function undoLastScore(matchId) {
   // Tìm event cuối
-  const lastEvent = await query(
-    `SELECT id FROM score_events WHERE match_id = $1 ORDER BY created_at DESC LIMIT 1`,
+  const lastEventRes = await query(
+    `SELECT * FROM score_events WHERE match_id = $1 ORDER BY created_at DESC LIMIT 1`,
     [matchId]
   );
-  if (!lastEvent.rows[0]) throw new AppError(400, 'Không có điểm nào để undo', 'NO_SCORE_TO_UNDO');
+  const lastEvent = lastEventRes.rows[0];
+  if (!lastEvent) throw new AppError(400, 'Không có điểm nào để undo', 'NO_SCORE_TO_UNDO');
 
-  await query(`DELETE FROM score_events WHERE id = $1`, [lastEvent.rows[0].id]);
+  const client = await getClient();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Rollback match_sets scores for this set
+    await client.query(
+      `INSERT INTO match_sets (match_id, set_no, score_a, score_b, winner)
+       VALUES ($1, $2, $3, $4, NULL)
+       ON CONFLICT (match_id, set_no)
+       DO UPDATE SET score_a = EXCLUDED.score_a, score_b = EXCLUDED.score_b, winner = NULL`,
+      [matchId, lastEvent.set_no, lastEvent.prev_score_a, lastEvent.prev_score_b]
+    );
+
+    // 2. Fetch current match details to check status
+    const matchRes = await client.query(
+      `SELECT status, winner_side, next_match_id, next_match_side FROM matches WHERE id = $1`,
+      [matchId]
+    );
+    const match = matchRes.rows[0];
+
+    // 3. If the match was completed, we need to revert it back to live
+    if (match && match.status === 'completed') {
+      await client.query(
+        `UPDATE matches SET status = 'live', winner_side = NULL, ended_at = NULL WHERE id = $1`,
+        [matchId]
+      );
+
+      // And delete the advanced winner from the next match
+      if (match.next_match_id) {
+        // Fetch the participants of the current match on the winner's side
+        const winnerPartsRes = await client.query(
+          `SELECT player_id FROM match_participants WHERE match_id = $1 AND side = $2`,
+          [matchId, match.winner_side]
+        );
+        const winningPlayers = winnerPartsRes.rows;
+        if (winningPlayers.length > 0) {
+          const playerIds = winningPlayers.map(wp => wp.player_id);
+          await client.query(
+            `DELETE FROM match_participants WHERE match_id = $1 AND side = $2 AND player_id = ANY($3)`,
+            [match.next_match_id, match.next_match_side, playerIds]
+          );
+        }
+      }
+    }
+
+    // 4. Delete the score event
+    await client.query(`DELETE FROM score_events WHERE id = $1`, [lastEvent.id]);
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+
   broadcastScoreUpdate(matchId, { type: 'undo' });
   return true;
 }
