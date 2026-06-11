@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # 1. Cơ sở dữ liệu chính PostgreSQL 16
+  postgres:
+    image: postgres:16-alpine
+    container_name: badminton-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: badminton_tournament
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_secure_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+    networks:
+      - badminton-network
+
+  # 2. Caching & Message Broker Redis 7
+  redis:
+    image: redis:7-alpine
+    container_name: badminton-redis
+    ports:
+      - "16379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+    networks:
+      - badminton-network
+
+  # 3. Backend Express API Server
+  backend:
+    image: shuttleops-backend:latest
+    container_name: badminton-backend
+    build:
+      context: ./back-end
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres_secure_password@postgres:5432/badminton_tournament
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: secure_jwt_secret_key_2026
+      PORT: 3000
+      NODE_ENV: production
+      FRONTEND_URL: http://localhost:5173
+    depends_on:
+      - postgres
+      - redis
+    restart: always
+    networks:
+      - badminton-network
+
+  # 4. Frontend React Client (Tĩnh, chạy qua Web Server Nginx)
+  frontend:
+    image: shuttleops-frontend:latest
+    container_name: badminton-frontend
+    build:
+      context: ./front-end
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - badminton-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  badminton-network:
+    driver: bridge
