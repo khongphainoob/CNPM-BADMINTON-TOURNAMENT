@@ -151,8 +151,8 @@ test.describe.serial('Core Business Flow (E2E)', () => {
     const drawRes = await drawResponsePromise;
     console.log('Draw API Response:', await drawRes.text());
 
-    // Kiểm tra trận đấu xuất hiện (Vòng Bảng)
-    await expect(page.locator('text=Vòng Bảng')).toBeVisible({ timeout: 5000 });
+    // Kiểm tra trận đấu xuất hiện (Chung kết)
+    await expect(page.locator('text=Chung kết')).toBeVisible({ timeout: 5000 });
     
     // 6. Phase 3: Điều phối Lịch & Sân (Court Assignment)
     // Phải tạo sân trước khi xếp lịch (vì giải mới chưa có sân)

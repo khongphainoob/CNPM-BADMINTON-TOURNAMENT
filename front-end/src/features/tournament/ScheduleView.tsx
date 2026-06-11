@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { competitionApi, tournamentApi } from '../../data/api'
 import { useStore } from '../../data/store'
 import { CATEGORIES } from '../../data/constants'
-import Icon from '../../components/shared/Icon'
 import Modal from '../../components/shared/Modal'
 import { btnPrimary, btnGhost } from '../../components/shared/tokens'
 import { useToast } from '../../components/shared/Toast'
@@ -17,6 +16,7 @@ export function ScheduleView() {
 
   const [day, setDay] = useState(0)
   const [catFilter, setCatFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
   const [selectedMatch, setSelectedMatch] = useState<any>(null)
   const [selectedCourt, setSelectedCourt] = useState('')
@@ -69,7 +69,7 @@ export function ScheduleView() {
     try {
       const [cRes, mRes] = await Promise.all([
         tournamentApi.listCourts(tournament.id),
-        competitionApi.listMatches()
+        competitionApi.listMatches({ tournament_id: tournament.id })
       ])
       setCourts(cRes || [])
       setMatches(mRes.data || [])
@@ -182,7 +182,11 @@ export function ScheduleView() {
     }
   })
 
-  const visibleBlocks = catFilter === 'all' ? blocks : blocks.filter(b => b.cat === catFilter)
+  const visibleBlocks = blocks.filter(b => {
+    const matchesCat = catFilter === 'all' || b.cat === catFilter
+    const matchesStatus = statusFilter === 'all' || b.status === statusFilter
+    return matchesCat && matchesStatus
+  })
 
   const colBg: Record<string, string> = {
     done: 'var(--paper-3)', live: 'var(--accent)', scheduled: 'var(--paper-2)',
@@ -192,8 +196,7 @@ export function ScheduleView() {
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
       {scheduleModalOpen && (
-        <Modal onClose={() => setScheduleModalOpen(false)}>
-          <h2 style={{ margin: '0 0 16px', fontSize: 18 }}>Xếp lịch trận #{selectedMatch?.id}</h2>
+        <Modal title={`Xếp lịch trận #${selectedMatch?.id}`} onClose={() => setScheduleModalOpen(false)}>
           <div style={{ marginBottom: 12 }}>
             <label className="caps" style={{ display: 'block', marginBottom: 6 }}>Chọn Sân</label>
             <select className="input" value={selectedCourt} onChange={e => setSelectedCourt(e.target.value)}>
@@ -221,12 +224,18 @@ export function ScheduleView() {
         <div>
           <div className="caps">Lịch thi đấu chi tiết</div>
           <h1 className="serif" style={{ margin: '2px 0 0', fontSize: 28, letterSpacing: '0.01em', textTransform: 'uppercase' }}>
-            Điều phối · {courts.length} sân · {matches.length} trận
+            Điều phối · {courts.length} sân · {matches.length} trận {loading && <span style={{ fontSize: 13, textTransform: 'none', color: 'var(--ink-3)', fontWeight: 'normal', fontStyle: 'italic', marginLeft: 12 }}>Đang tải...</span>}
           </h1>
         </div>
         <div style={{ flex: 1 }}/>
         <div style={{ display: 'flex', gap: 6 }}>
-          <select className="input" value={catFilter} onChange={e => setCatFilter(e.target.value)} style={{ width: 'auto', padding: '6px 10px' }}>
+          <select className="input" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: 'auto', padding: '6px 10px', outline: 'none' }}>
+            <option value="all">Tất cả trạng thái</option>
+            <option value="scheduled">Sắp thi đấu</option>
+            <option value="live">Đang thi đấu</option>
+            <option value="done">Hoàn thành</option>
+          </select>
+          <select className="input" value={catFilter} onChange={e => setCatFilter(e.target.value)} style={{ width: 'auto', padding: '6px 10px', outline: 'none' }}>
             <option value="all">Tất cả hạng mục</option>
             {Object.entries(CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v} ({k})</option>)}
           </select>
@@ -251,22 +260,33 @@ export function ScheduleView() {
             Trận chưa xếp lịch ({matches.filter(m => !m.court_id).length})
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {matches.filter(m => !m.court_id).map(m => (
-              <div 
-                key={m.id} 
-                draggable 
-                onDragStart={(e) => handleDragStart(e, m)}
-                onClick={() => handleOpenSchedule(m)} 
-                style={{
-                  background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 6, padding: '8px 10px',
-                  fontSize: 12, cursor: 'grab', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                }}
-              >
-                <div className="caps" style={{ opacity: 0.7, fontSize: 10 }}>{m.category_code} · {m.round}</div>
-                <div style={{ fontWeight: 500, marginTop: 4 }}>Trận #{m.id}</div>
-                <div style={{ fontSize: 11, color: 'var(--ink-2)', marginTop: 4 }}>Kéo thả hoặc nhấp để xếp lịch</div>
-              </div>
-            ))}
+            {matches.filter(m => !m.court_id).filter(m => catFilter === 'all' || m.category_code === catFilter).map(m => {
+              const sideA = (m.participants || []).filter((p: any) => p.side === 'A')
+              const sideB = (m.participants || []).filter((p: any) => p.side === 'B')
+              const pA = sideA.length > 0 ? sideA.map((p: any) => p.player?.name || p.player_name || 'TBD').join(' & ') : 'TBD'
+              const pB = sideB.length > 0 ? sideB.map((p: any) => p.player?.name || p.player_name || 'TBD').join(' & ') : 'TBD'
+              return (
+                <div 
+                  key={m.id} 
+                  draggable 
+                  onDragStart={(e) => handleDragStart(e, m)}
+                  onClick={() => handleOpenSchedule(m)} 
+                  style={{
+                    background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 6, padding: '8px 10px',
+                    fontSize: 12, cursor: 'grab', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                  }}
+                >
+                  <div className="caps" style={{ opacity: 0.7, fontSize: 10 }}>{CATEGORIES[m.category_code] || m.category_code} · {m.round}</div>
+                  <div style={{ fontWeight: 600, marginTop: 4, color: 'var(--ink)' }}>Trận #{m.id}</div>
+                  <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 4, fontWeight: 500 }}>
+                    {pA} <span style={{ color: 'var(--ink-3)', fontWeight: 400 }}>vs</span> {pB}
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 6, borderTop: '1px dashed var(--line-2)', paddingTop: 4 }}>
+                    Kéo thả hoặc nhấp để xếp lịch
+                  </div>
+                </div>
+              )
+            })}
             {matches.filter(m => !m.court_id).length === 0 && <div style={{ padding: 16, color: 'var(--ink-3)', textAlign: 'center', fontSize: 12 }}>Không có trận trống</div>}
           </div>
         </div>
@@ -301,19 +321,35 @@ export function ScheduleView() {
                     Bảo trì — không xếp lịch
                   </div>
                 )}
-                {visibleBlocks.filter(b => b.court === c.id).map((b, i) => {
+                 {visibleBlocks.filter(b => b.court === c.id).map((b, i) => {
                   const width = `calc((100% - 90px) / ${slots.length} * ${b.span})`
                   const left  = `calc(90px + (100% - 90px) / ${slots.length} * ${b.start})`
+                  const sideA = (b.match.participants || []).filter((p: any) => p.side === 'A')
+                  const sideB = (b.match.participants || []).filter((p: any) => p.side === 'B')
+                  const pA = sideA.length > 0 ? sideA.map((p: any) => p.player?.name || p.player_name || 'TBD').join(' & ') : 'TBD'
+                  const pB = sideB.length > 0 ? sideB.map((p: any) => p.player?.name || p.player_name || 'TBD').join(' & ') : 'TBD'
+                  const tooltip = `Trận #${b.match.id} [${CATEGORIES[b.cat] || b.cat}]\n${b.match.round}\n${pA} vs ${pB}`
+                  
                   return (
-                    <div key={i} onClick={() => handleOpenSchedule(b.match)} style={{
-                      position: 'absolute', left, width, top: 5, bottom: 5,
-                      background: colBg[b.status], color: b.status === 'live' ? 'white' : 'var(--ink)',
-                      borderRadius: 4, padding: '6px 8px', fontSize: 11, cursor: 'pointer',
-                      border: '1px solid var(--line)',
-                      display: 'flex', flexDirection: 'column', gap: 1, overflow: 'hidden',
-                    }}>
-                      <div className="mono" style={{ fontSize: 9.5, opacity: 0.75 }}>{b.cat}</div>
-                      <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.label}</div>
+                    <div 
+                      key={i} 
+                      onClick={() => handleOpenSchedule(b.match)} 
+                      title={tooltip}
+                      style={{
+                        position: 'absolute', left, width, top: 5, bottom: 5,
+                        background: colBg[b.status], color: b.status === 'live' ? 'white' : 'var(--ink)',
+                        borderRadius: 4, padding: '6px 8px', fontSize: 11, cursor: 'pointer',
+                        border: '1px solid var(--line)',
+                        display: 'flex', flexDirection: 'column', gap: 1, overflow: 'hidden',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <div className="mono" style={{ fontSize: 9, opacity: 0.8, fontWeight: 700 }}>
+                        {CATEGORIES[b.cat] || b.cat} · {b.match.round}
+                      </div>
+                      <div style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 11 }}>
+                        #{b.match.id}: {pA} vs {pB}
+                      </div>
                     </div>
                   )
                 })}

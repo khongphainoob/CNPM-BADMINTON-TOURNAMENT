@@ -321,3 +321,14 @@ export const reportingApi = {
     return res.data.data
   }
 }
+
+export const configApi = {
+  get: async () => {
+    const res = await apiClient.get('/api/config')
+    return res.data.data
+  },
+  update: async (data: any) => {
+    const res = await apiClient.patch('/api/config', data)
+    return res.data.data
+  }
+}

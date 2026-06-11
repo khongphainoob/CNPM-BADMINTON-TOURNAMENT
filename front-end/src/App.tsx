@@ -249,7 +249,7 @@ export default function App() {
         } />
         <Route path="/my-schedule" element={
           <ProtectedRoute allowed={['athlete', 'spectator']}>
-            {session.role === 'athlete' ? <AthleteViewWrapper view="matches" session={session} /> : <MyScheduleView />}
+            <MyScheduleView />
           </ProtectedRoute>
         } />
 

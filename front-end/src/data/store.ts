@@ -479,8 +479,10 @@ export async function fetchMatches(tournamentId?: number | string) {
         // Extract participants by side
         const sideA = (m.participants || []).filter((p: any) => p.side === 'A')
         const sideB = (m.participants || []).filter((p: any) => p.side === 'B')
-        const playerA = sideA[0]?.player || { name: 'TBD', club: '', code: '' }
-        const playerB = sideB[0]?.player || { name: 'TBD', club: '', code: '' }
+        const pAName = sideA.length > 0 ? sideA.map((p: any) => p.player?.name || 'TBD').join(' & ') : 'TBD'
+        const pBName = sideB.length > 0 ? sideB.map((p: any) => p.player?.name || 'TBD').join(' & ') : 'TBD'
+        const clubA = sideA[0]?.player?.club || ''
+        const clubB = sideB[0]?.player?.club || ''
 
         // Map sets to score arrays
         const sets = (m.sets || []).map((s: any) => [s.score_a, s.score_b])
@@ -492,8 +494,8 @@ export async function fetchMatches(tournamentId?: number | string) {
             court: Number(courtNum),
             cat: m.category_code || m.event_label || '',
             round: m.round || '',
-            a: { name: playerA.name, club: playerA.club || '', seed: sideA[0]?.seed || null },
-            b: { name: playerB.name, club: playerB.club || '', seed: sideB[0]?.seed || null },
+            a: { name: pAName, club: clubA, seed: sideA[0]?.seed || null },
+            b: { name: pBName, club: clubB, seed: sideB[0]?.seed || null },
             sets,
             current: sets.length > 0 ? sets.length - 1 : 0,
             umpire: m.referee_name || 'Chưa xếp',
@@ -508,8 +510,8 @@ export async function fetchMatches(tournamentId?: number | string) {
             court: Number(courtNum),
             cat: m.category_code || m.event_label || '',
             round: m.round || '',
-            a: playerA.name,
-            b: playerB.name,
+            a: pAName,
+            b: pBName,
           })
         }
       })

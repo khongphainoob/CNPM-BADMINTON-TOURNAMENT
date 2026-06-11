@@ -248,9 +248,9 @@ CREATE TABLE matches (
   ended_at        TIMESTAMPTZ,
   status          match_status_t NOT NULL DEFAULT 'upcoming',
   winner_side     side_t,
-  result_type     VARCHAR(16) NOT NULL DEFAULT 'normal',             -- normal | walkover | disqualification
-  next_match_id   BIGINT REFERENCES matches(id) ON DELETE SET NULL,  -- trận kế tiếp đội thắng đi vào
-  next_slot       side_t,                                            -- đội thắng điền vào side nào của trận kế
+  result_type     VARCHAR(16) NOT NULL DEFAULT 'normal',
+  next_match_id   BIGINT REFERENCES matches(id) ON DELETE SET NULL,
+  next_match_side side_t,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   deleted_at      TIMESTAMPTZ,

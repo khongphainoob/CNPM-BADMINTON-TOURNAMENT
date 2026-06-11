@@ -36,7 +36,7 @@ export default function NotificationView() {
         await participationApi.rejectPartner(meta.participantId)
         toast('Đã từ chối lời mời')
       }
-      await notificationApi.markRead(n.id)
+      await notificationApi.markAsRead(n.id)
       fetchNotifs()
     } catch (err: any) {
       toast(err.response?.data?.error?.message || 'Có lỗi xảy ra', 'error')

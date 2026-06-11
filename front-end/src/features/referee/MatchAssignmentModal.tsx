@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import Icon from '../../components/shared/Icon'
 import { useStore } from '../../data/store'
+import { useAuth } from '../../data/auth'
 
 // Removed Mock Data
 
@@ -18,7 +19,8 @@ type Props = {
 }
 
 export default function MatchAssignmentModal({ matchId, matchDetails, onClose, onSave }: Props) {
-  const { currentUser, referees } = useStore()
+  const { session } = useAuth()
+  const { referees } = useStore()
   const [refId, setRefId] = useState('')
   const [role, setRole] = useState('main_referee')
   const [status, setStatus] = useState('pending')
@@ -96,7 +98,7 @@ export default function MatchAssignmentModal({ matchId, matchDetails, onClose, o
               </div>
               <div style={{ padding: '8px 12px', background: 'var(--paper-2)', borderRadius: 6, flex: 1 }}>
                 <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>Đơn vị / CLB</div>
-                <div style={{ fontWeight: 600, marginTop: 2 }}>{selectedRef.club}</div>
+                <div style={{ fontWeight: 600, marginTop: 2 }}>{(selectedRef as any).club || 'Trọng tài Liên đoàn'}</div>
               </div>
             </div>
           )}
@@ -110,7 +112,7 @@ export default function MatchAssignmentModal({ matchId, matchDetails, onClose, o
             )}
             {isConflictClub && (
               <div style={{ padding: '10px 14px', background: 'oklch(0.96 0.04 25)', color: 'var(--accent)', borderRadius: 6, fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Icon name="alert-triangle" size={16} /> Cảnh báo: Trọng tài cùng đơn vị ({selectedRef?.club}) với VĐV tham gia.
+                <Icon name="alert-triangle" size={16} /> Cảnh báo: Trọng tài cùng đơn vị ({(selectedRef as any)?.club || 'Trọng tài Liên đoàn'}) với VĐV tham gia.
               </div>
             )}
             {isTooLate && (
@@ -158,7 +160,7 @@ export default function MatchAssignmentModal({ matchId, matchDetails, onClose, o
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 16, borderTop: '1px solid var(--line)' }}>
-            <div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>Người duyệt: <strong>{currentUser?.name || 'Admin'}</strong></div>
+            <div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>Người duyệt: <strong>{session?.name || 'Admin'}</strong></div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button type="button" onClick={onClose} style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: 'transparent', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Huỷ</button>
               <button type="submit" disabled={!selectedRef || isTooLate} style={{ 

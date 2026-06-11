@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import Icon from '../../components/shared/Icon'
-import { useStore } from '../../data/store'
+import { useAuth } from '../../data/auth'
 
 type Props = {
   onClose: () => void
@@ -8,11 +8,10 @@ type Props = {
 }
 
 export default function ArticleEditor({ onClose, onSave }: Props) {
-  const { currentUser } = useStore()
+  const { session } = useAuth()
   const [title, setTitle] = useState('')
   const [slug, setSlug] = useState('')
   const [content, setContent] = useState('')
-  const [status, setStatus] = useState('draft')
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [thumbnail, setThumbnail] = useState<File | null>(null)
@@ -50,7 +49,7 @@ export default function ArticleEditor({ onClose, onSave }: Props) {
     onSave({
       title, slug, content, tags, status: submitStatus,
       thumbnailName: thumbnail?.name,
-      author: currentUser?.name || 'Admin',
+      author: session?.name || 'Admin',
       createdAt: new Date().toISOString()
     })
   }
@@ -90,12 +89,20 @@ export default function ArticleEditor({ onClose, onSave }: Props) {
             />
 
             {/* Fake Rich Text Toolbar */}
-            <div style={{ display: 'flex', gap: 4, padding: '8px', background: 'var(--paper-2)', borderRadius: 8, border: '1px solid var(--line)' }}>
-              {['bold', 'italic', 'underline', 'link', 'image', 'list', 'align-left', 'align-center', 'align-right'].map(icon => (
-                <button key={icon} style={{ padding: '6px', background: 'transparent', border: 'none', borderRadius: 4, color: 'var(--ink-2)', cursor: 'pointer' }}>
-                  <Icon name={icon} size={16} />
-                </button>
-              ))}
+            <div style={{ display: 'flex', gap: 8, padding: '6px 12px', background: 'var(--paper-2)', borderRadius: 8, border: '1px solid var(--line)', alignItems: 'center' }}>
+              <button type="button" style={{ padding: '4px 8px', background: 'transparent', border: 'none', borderRadius: 4, color: 'var(--ink-2)', cursor: 'pointer', fontWeight: 'bold', fontSize: 13 }}>B</button>
+              <button type="button" style={{ padding: '4px 8px', background: 'transparent', border: 'none', borderRadius: 4, color: 'var(--ink-2)', cursor: 'pointer', fontStyle: 'italic', fontSize: 13 }}>I</button>
+              <button type="button" style={{ padding: '4px 8px', background: 'transparent', border: 'none', borderRadius: 4, color: 'var(--ink-2)', cursor: 'pointer', textDecoration: 'underline', fontSize: 13 }}>U</button>
+              <div style={{ width: 1, height: 16, background: 'var(--line)', margin: '0 4px' }} />
+              <button type="button" style={{ padding: '4px 8px', background: 'transparent', border: 'none', borderRadius: 4, color: 'var(--ink-2)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Icon name="link" size={13} /> Link
+              </button>
+              <button type="button" style={{ padding: '4px 8px', background: 'transparent', border: 'none', borderRadius: 4, color: 'var(--ink-2)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Icon name="globe" size={13} /> Ảnh
+              </button>
+              <button type="button" style={{ padding: '4px 8px', background: 'transparent', border: 'none', borderRadius: 4, color: 'var(--ink-2)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Icon name="menu" size={13} /> Danh sách
+              </button>
             </div>
 
             <textarea 
@@ -163,7 +170,7 @@ export default function ArticleEditor({ onClose, onSave }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', textTransform: 'uppercase' }}>Tác giả</label>
               <div style={{ padding: '10px 12px', borderRadius: 6, background: 'var(--line-2)', fontSize: 13, color: 'var(--ink-2)', fontWeight: 500 }}>
-                {currentUser?.name || 'Admin'}
+                {session?.name || 'Admin'}
               </div>
             </div>
 

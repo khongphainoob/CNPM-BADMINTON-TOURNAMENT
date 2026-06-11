@@ -6,13 +6,14 @@ type IconProps = {
   stroke?: number
   style?: React.CSSProperties
   color?: string
-}
+} & Omit<React.SVGProps<SVGSVGElement>, 'stroke'>
 
-export default function Icon({ name, size = 16, stroke = 1.6, style }: IconProps) {
+export default function Icon({ name, size = 16, stroke = 1.6, style, ...rest }: IconProps) {
   const p = {
     width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
     stroke: 'currentColor', strokeWidth: stroke, strokeLinecap: 'round' as const,
     strokeLinejoin: 'round' as const, style,
+    ...rest
   }
   const paths: Record<string, React.ReactNode> = {
     dashboard:    <><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></>,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -125,7 +125,7 @@ function BM11Form() {
 
   const [status, setStatus] = useState<'draft' | 'confirmed'>('draft')
 
-  const onSubmit = (data: BM11Data) => {
+  const onSubmit = (_data: BM11Data) => {
     setStatus('confirmed')
     toast('Đã xác nhận cấu hình thể thức (BM11)')
   }
@@ -212,8 +212,8 @@ function BM12Form() {
       return
     }
     try {
-      await tournamentApi.changeStatus(tournament.id, nextStatus)
-      setCurrentStatus(nextStatus)
+      await tournamentApi.changeStatus(tournament.id, nextStatus as any)
+      setCurrentStatus(nextStatus as any)
       setNextStatus('')
       setReason('')
       toast(`Đã cập nhật trạng thái giải đấu thành: ${nextStatus}`, 'success')
@@ -272,7 +272,7 @@ function BM12Form() {
 }
 
 export function SettingsView() {
-  const [activeTab, setActiveTab] = useState<'info' | 'format' | 'status'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'events' | 'format' | 'status'>('info')
 
   return (
     <div className="p-6 max-w-3xl mx-auto">

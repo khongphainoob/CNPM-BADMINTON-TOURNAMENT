@@ -1,5 +1,6 @@
 import { query, getClient } from '../../config/db.js';
 import { AppError } from '../../middleware/error.js';
+import { broadcastScoreUpdate } from '../../config/socket.js';
 
 export async function listMatches({ eventId, tournamentId, status, courtId, refereeId, playerId, page = 1, limit = 50 } = {}) {
   const conditions = ['m.deleted_at IS NULL'];
@@ -37,7 +38,7 @@ export async function listMatches({ eventId, tournamentId, status, courtId, refe
   const [matchesResult, countResult] = await Promise.all([
     query(
       `SELECT m.id, m.code, m.round, m.scheduled_at, m.started_at, m.ended_at,
-              m.status, m.winner_side, m.result_type,
+              m.status, m.winner_side, m.result_type, m.next_match_id, m.next_match_side,
               e.id AS event_id, e.label AS event_label, e.category_code,
               e.max_sets, e.points_per_set, cat.is_doubles,
               t.id AS tournament_id, t.name AS tournament_name,
@@ -110,6 +111,7 @@ export async function getMatchById(id) {
   const matchResult = await query(
     `SELECT m.id, m.code, m.event_id, m.round, m.court_id, m.referee_id,
             m.scheduled_at, m.started_at, m.ended_at, m.status, m.winner_side,
+            m.next_match_id, m.next_match_side,
             e.category_code, e.max_sets, e.points_per_set
        FROM matches m
        JOIN events e ON e.id = m.event_id
@@ -212,18 +214,63 @@ export async function completeMatch(id) {
   if (setsWonA >= setsToWin) winnerSide = 'A';
   else if (setsWonB >= setsToWin) winnerSide = 'B';
 
-  const result = await query(
-    `UPDATE matches SET status = 'completed', ended_at = now(), winner_side = $1 WHERE id = $2 RETURNING *`,
-    [winnerSide, id]
-  );
+  const client = await getClient();
+  let completedMatch;
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      `UPDATE matches SET status = 'completed', ended_at = now(), winner_side = $1 WHERE id = $2 RETURNING *`,
+      [winnerSide, id]
+    );
+    completedMatch = result.rows[0];
 
-  // Advance the winner into the next round's match (idempotent — safe on retry/replay).
-  await advanceWinner({ query }, id);
+    if (completedMatch && winnerSide) {
+      await advanceWinner(client, id, winnerSide);
+    }
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('Lỗi khi tự động tiến cử người thắng:', e);
+    throw e;
+  } finally {
+    client.release();
+  }
 
-  return result.rows[0];
+  return completedMatch;
 }
 
-// Abnormal ending: walkover (opponent absent) or disqualification. Sets winner + advances bracket.
+export async function advanceWinner(client, matchId, winnerSide) {
+  // 1. Fetch match next link details
+  const matchRes = await client.query(
+    `SELECT next_match_id, next_match_side FROM matches WHERE id = $1`,
+    [matchId]
+  );
+  const match = matchRes.rows[0];
+  if (!match || !match.next_match_id) return;
+
+  const nextMatchId = match.next_match_id;
+  const nextMatchSide = match.next_match_side;
+
+  const winnerPartsRes = await client.query(
+    `SELECT player_id, seed FROM match_participants WHERE match_id = $1 AND side = $2`,
+    [matchId, winnerSide]
+  );
+  const winningPlayers = winnerPartsRes.rows;
+  if (winningPlayers.length === 0) return;
+
+  await client.query(
+    `DELETE FROM match_participants WHERE match_id = $1 AND side = $2`,
+    [nextMatchId, nextMatchSide]
+  );
+
+  for (const wp of winningPlayers) {
+    await client.query(
+      `INSERT INTO match_participants (match_id, side, player_id, seed) VALUES ($1, $2, $3, $4)`,
+      [nextMatchId, nextMatchSide, wp.player_id, wp.seed]
+    );
+  }
+}
+
 export async function setMatchResult(id, { resultType, winnerSide, note }) {
   const match = await getMatchById(id);
   if (!match) throw new AppError(404, 'Match not found', 'NOT_FOUND');
@@ -231,25 +278,30 @@ export async function setMatchResult(id, { resultType, winnerSide, note }) {
     throw new AppError(400, 'resultType không hợp lệ', 'INVALID_RESULT_TYPE');
   }
 
-  const result = await query(
-    `UPDATE matches
-        SET status = 'completed', ended_at = now(), winner_side = $1, result_type = $2
-      WHERE id = $3 RETURNING *`,
-    [winnerSide, resultType, id]
-  );
-
-  if (note) {
-    await query(
-      `INSERT INTO activity_log (action, target_type, target_id, message)
-       VALUES ('match.result', 'match', $1, $2)`,
-      [String(id), `${resultType}: ${note}`]
+  const client = await getClient();
+  let result;
+  try {
+    await client.query('BEGIN');
+    result = await client.query(
+      `UPDATE matches SET status = 'completed', ended_at = now(), winner_side = $1, result_type = $2 WHERE id = $3 RETURNING *`,
+      [winnerSide, resultType, id]
     );
+    if (note) {
+      await client.query(
+        `INSERT INTO activity_log (action, target_type, target_id, message) VALUES ('match.result', 'match', $1, $2)`,
+        [String(id), `${resultType}: ${note}`]
+      );
+    }
+    await advanceWinner(client, id, winnerSide);
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
   }
 
-  await advanceWinner({ query }, id);
-
   return result.rows[0];
-}
 
 export async function addMatchParticipant(matchId, { side, playerId, seed }) {
   const result = await query(
@@ -283,7 +335,9 @@ export async function addSetScore(matchId, { setNo, scoreA, scoreB }) {
     [matchId, setNo, scoreA, scoreB, winner]
   );
 
-  return result.rows[0];
+  const resRow = result.rows[0];
+  broadcastScoreUpdate(matchId, { type: 'set-score', ...resRow });
+  return resRow;
 }
 
 export async function addScoreEvent(matchId, { setNo, scorer, prevScoreA, prevScoreB, prevServing, causedSetEnd }) {
@@ -293,7 +347,9 @@ export async function addScoreEvent(matchId, { setNo, scorer, prevScoreA, prevSc
      RETURNING *`,
     [matchId, setNo, scorer, prevScoreA || 0, prevScoreB || 0, prevServing || 'A', causedSetEnd || false]
   );
-  return result.rows[0];
+  const resRow = result.rows[0];
+  broadcastScoreUpdate(matchId, { type: 'score-event', ...resRow });
+  return resRow;
 }
 
 export async function listScoreEvents(matchId) {
@@ -313,6 +369,7 @@ export async function undoLastScore(matchId) {
   if (!lastEvent.rows[0]) throw new AppError(400, 'Không có điểm nào để undo', 'NO_SCORE_TO_UNDO');
 
   await query(`DELETE FROM score_events WHERE id = $1`, [lastEvent.rows[0].id]);
+  broadcastScoreUpdate(matchId, { type: 'undo' });
   return true;
 }
 
@@ -337,8 +394,14 @@ export async function generateRandomDraw(eventId) {
   // 2. Bracket size must be next power of 2
   const bracketSize = nextPowerOf2(playerCount);
   const numByes = bracketSize - playerCount;
+  const totalRounds = Math.log2(bracketSize);
 
-  // (Round names are derived per-round below via roundNameForSize.)
+  function getRoundName(roundIndex, total) {
+    if (roundIndex === total) return 'Chung kết';
+    if (roundIndex === total - 1) return 'Bán kết';
+    if (roundIndex === total - 2) return 'Tứ kết';
+    return `Vòng ${Math.pow(2, total - roundIndex + 1)}`;
+  }
 
   // 3. Separate seeded players and unseeded players
   const seeded = participants.filter(p => p.seed !== null);
@@ -395,76 +458,96 @@ export async function generateRandomDraw(eventId) {
     await client.query(`UPDATE matches SET next_match_id = NULL WHERE event_id = $1`, [eventId]);
     await client.query(`DELETE FROM matches WHERE event_id = $1`, [eventId]);
 
-    const numRounds = Math.log2(bracketSize);
+    const createdMatchIds = {};
+    let totalMatchesCreated = 0;
 
-    // 8a. Create every match across all rounds (empty for now); remember ids per round.
-    const rounds = [];
-    for (let r = 0; r < numRounds; r++) {
-      const playersInRound = bracketSize / Math.pow(2, r);
-      const matchesInRound = playersInRound / 2;
-      const rName = roundNameForSize(playersInRound);
-      const ids = [];
-      for (let j = 0; j < matchesInRound; j++) {
-        const res = await client.query(
-          `INSERT INTO matches (event_id, round, status, code)
-           VALUES ($1, $2, 'upcoming', $3) RETURNING id`,
-          [eventId, rName, `M-${eventId}-R${r + 1}-${j + 1}`]
+    for (let r = totalRounds; r >= 1; r--) {
+      const roundName = getRoundName(r, totalRounds);
+      const matchesInRound = Math.pow(2, totalRounds - r);
+
+      for (let i = 0; i < matchesInRound; i++) {
+        let nextMatchId = null;
+        let nextMatchSide = null;
+
+        if (r < totalRounds) {
+          const nextMatchIndex = Math.floor(i / 2);
+          nextMatchId = createdMatchIds[`${r + 1}-${nextMatchIndex}`] || null;
+          nextMatchSide = i % 2 === 0 ? 'A' : 'B';
+        }
+
+        let status = 'upcoming';
+        let winnerSide = null;
+        let endedAt = null;
+
+        if (r === 1) {
+          const playerA = slots[i * 2];
+          const playerB = slots[i * 2 + 1];
+          const isByeA = playerA === 'BYE' || playerA === null;
+          const isByeB = playerB === 'BYE' || playerB === null;
+
+          if (isByeA) {
+            status = 'completed';
+            winnerSide = 'B';
+            endedAt = 'now()';
+          } else if (isByeB) {
+            status = 'completed';
+            winnerSide = 'A';
+            endedAt = 'now()';
+          }
+        }
+
+        const matchCode = `M-${eventId}-${r}-${i + 1}`;
+        const matchRes = await client.query(
+          `INSERT INTO matches (event_id, round, status, winner_side, ended_at, code, next_match_id, next_match_side)
+           VALUES ($1, $2, $3, $4, ${endedAt ? 'now()' : 'NULL'}, $5, $6, $7)
+           RETURNING id`,
+          [eventId, roundName, status, winnerSide, matchCode, nextMatchId, nextMatchSide]
         );
-        ids.push(res.rows[0].id);
-      }
-      rounds.push(ids);
-    }
+        const matchId = matchRes.rows[0].id;
+        createdMatchIds[`${r}-${i}`] = matchId;
+        totalMatchesCreated++;
 
-    // 8b. Link each match to its successor: winner of match j feeds match floor(j/2).
-    for (let r = 0; r < numRounds - 1; r++) {
-      for (let j = 0; j < rounds[r].length; j++) {
-        const nextId = rounds[r + 1][Math.floor(j / 2)];
-        const slot = j % 2 === 0 ? 'A' : 'B';
-        await client.query(
-          `UPDATE matches SET next_match_id = $1, next_slot = $2 WHERE id = $3`,
-          [nextId, slot, rounds[r][j]]
-        );
-      }
-    }
+        if (r === 1) {
+          const playerA = slots[i * 2];
+          const playerB = slots[i * 2 + 1];
+          const isByeA = playerA === 'BYE' || playerA === null;
+          const isByeB = playerB === 'BYE' || playerB === null;
 
-    // 8c. Seat round-1 players; BYE matches auto-complete and advance immediately.
-    const insertSide = async (matchId, side, participant) => {
-      await client.query(
-        `INSERT INTO match_participants (match_id, side, player_id, seed) VALUES ($1, $2, $3, $4)`,
-        [matchId, side, participant.player_id, participant.seed]
-      );
-      if (participant.partner_id) {
-        await client.query(
-          `INSERT INTO match_participants (match_id, side, player_id, seed) VALUES ($1, $2, $3, $4)`,
-          [matchId, side, participant.partner_id, participant.seed]
-        );
-      }
-    };
+          if (!isByeA) {
+            await client.query(
+              `INSERT INTO match_participants (match_id, side, player_id, seed) VALUES ($1, 'A', $2, $3)`,
+              [matchId, playerA.player_id, playerA.seed]
+            );
+            if (playerA.partner_id) {
+              await client.query(
+                `INSERT INTO match_participants (match_id, side, player_id, seed) VALUES ($1, 'A', $2, $3)`,
+                [matchId, playerA.partner_id, playerA.seed]
+              );
+            }
+          }
 
-    for (let j = 0; j < rounds[0].length; j++) {
-      const matchId = rounds[0][j];
-      const playerA = slots[2 * j];
-      const playerB = slots[2 * j + 1];
-      const isByeA = playerA === 'BYE' || playerA === null;
-      const isByeB = playerB === 'BYE' || playerB === null;
+          if (!isByeB) {
+            await client.query(
+              `INSERT INTO match_participants (match_id, side, player_id, seed) VALUES ($1, 'B', $2, $3)`,
+              [matchId, playerB.player_id, playerB.seed]
+            );
+            if (playerB.partner_id) {
+              await client.query(
+                `INSERT INTO match_participants (match_id, side, player_id, seed) VALUES ($1, 'B', $2, $3)`,
+                [matchId, playerB.partner_id, playerB.seed]
+              );
+            }
+          }
 
-      if (!isByeA) await insertSide(matchId, 'A', playerA);
-      if (!isByeB) await insertSide(matchId, 'B', playerB);
-
-      if (isByeA && isByeB) {
-        await client.query(`UPDATE matches SET status = 'completed', ended_at = now() WHERE id = $1`, [matchId]);
-      } else if (isByeA || isByeB) {
-        const winnerSide = isByeA ? 'B' : 'A';
-        await client.query(
-          `UPDATE matches SET status = 'completed', winner_side = $1, ended_at = now() WHERE id = $2`,
-          [winnerSide, matchId]
-        );
-        await advanceWinner(client, matchId);
+          if (status === 'completed' && winnerSide && nextMatchId) {
+            await advanceWinner(client, matchId, winnerSide);
+          }
+        }
       }
     }
 
     await client.query('COMMIT');
-    return { matchesGenerated: bracketSize - 1 };
+    return { matchesGenerated: totalMatchesCreated };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

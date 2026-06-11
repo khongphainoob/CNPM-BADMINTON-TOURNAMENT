@@ -83,15 +83,9 @@ export async function registerPlayer(eventId, { playerId, partnerId, seed }) {
   }
 
   // Validate player exists
-  const player = await query('SELECT id, gender FROM players WHERE id = $1 AND deleted_at IS NULL', [playerId]);
-  if (!player.rows[0]) throw new AppError(404, 'Player not found', 'PLAYER_NOT_FOUND');
-
-  // Check duplicate
-  const dup = await query(
-    'SELECT id FROM event_participants WHERE event_id = $1 AND (player_id = $2 OR partner_id = $2)',
-    [eventId, playerId]
-  );
-  if (dup.rows[0]) throw new AppError(409, 'VĐV đã đăng ký nội dung này', 'DUPLICATE_REGISTRATION');
+  const playerResult = await query('SELECT id, gender FROM players WHERE id = $1 AND deleted_at IS NULL', [playerId]);
+  const player = playerResult.rows[0];
+  if (!player) throw new AppError(404, 'Player not found', 'PLAYER_NOT_FOUND');
 
   // Doubles validation
   let partner = null;
@@ -102,11 +96,41 @@ export async function registerPlayer(eventId, { playerId, partnerId, seed }) {
     const partnerResult = await query('SELECT id, gender, user_id FROM players WHERE id = $1 AND deleted_at IS NULL', [partnerId]);
     partner = partnerResult.rows[0];
     if (!partner) throw new AppError(404, 'Partner not found', 'PARTNER_NOT_FOUND');
+  }
 
-    // Mixed doubles: must be different genders
-    if (event.category_code === 'XD' && player.rows[0].gender === partner.gender) {
+  // Gender category validation
+  const cat = event.category_code;
+  if (cat === 'MS' && player.gender !== 'M') {
+    throw new AppError(400, 'Nội dung đơn nam chỉ dành cho VĐV Nam', 'GENDER_MISMATCH');
+  }
+  if (cat === 'WS' && player.gender !== 'F') {
+    throw new AppError(400, 'Nội dung đơn nữ chỉ dành cho VĐV Nữ', 'GENDER_MISMATCH');
+  }
+  if (cat === 'MD') {
+    if (player.gender !== 'M' || (partner && partner.gender !== 'M')) {
+      throw new AppError(400, 'Nội dung đôi nam chỉ dành cho VĐV Nam', 'GENDER_MISMATCH');
+    }
+  }
+  if (cat === 'WD') {
+    if (player.gender !== 'F' || (partner && partner.gender !== 'F')) {
+      throw new AppError(400, 'Nội dung đôi nữ chỉ dành cho VĐV Nữ', 'GENDER_MISMATCH');
+    }
+  }
+  if (cat === 'XD') {
+    if (partner && player.gender === partner.gender) {
       throw new AppError(400, 'Đôi nam nữ phải gồm 1 nam và 1 nữ', 'MIXED_GENDER_REQUIRED');
     }
+  }
+
+  // Check duplicate (using both playerId and partnerId)
+  const dup = await query(
+    `SELECT id FROM event_participants 
+     WHERE event_id = $1 
+       AND (player_id = $2 OR partner_id = $2 OR ($3::bigint IS NOT NULL AND (player_id = $3 OR partner_id = $3)))`,
+    [eventId, playerId, partnerId || null]
+  );
+  if (dup.rows[0]) {
+    throw new AppError(409, 'VĐV hoặc đồng đội đã đăng ký nội dung này', 'DUPLICATE_REGISTRATION');
   }
 
   let status = 'registered';

@@ -110,24 +110,82 @@ export function BracketView() {
   const col: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minWidth: 220 }
 
   const MatchCard = ({ match, ns, live }: { match?: any, ns?: [string, string]; live?: boolean }) => {
+    let scoreA = ''
+    let scoreB = ''
+    let setsDetails = ''
+    let winner: 'A' | 'B' | null = null
+
     // If we have a real match object from API
     if (match) {
-      const p1 = match.participants?.find((p:any) => p.side === 'A')
-      const p2 = match.participants?.find((p:any) => p.side === 'B')
-      const p1Name = p1?.player?.name || (match.status === 'completed' && match.winner_side === 'B' ? 'BYE' : 'TBD')
-      const p2Name = p2?.player?.name || (match.status === 'completed' && match.winner_side === 'A' ? 'BYE' : 'TBD')
+      const sideAPlayers = match.participants?.filter((p: any) => p.side === 'A') || []
+      const sideBPlayers = match.participants?.filter((p: any) => p.side === 'B') || []
+      const p1Name = sideAPlayers.length > 0
+        ? sideAPlayers.map((p: any) => p.player?.name || p.player_name || 'TBD').join(' & ')
+        : (match.status === 'completed' && match.winner_side === 'B' ? 'BYE' : 'TBD')
+      const p2Name = sideBPlayers.length > 0
+        ? sideBPlayers.map((p: any) => p.player?.name || p.player_name || 'TBD').join(' & ')
+        : (match.status === 'completed' && match.winner_side === 'A' ? 'BYE' : 'TBD')
       ns = [p1Name, p2Name]
       live = match.status === 'live'
+      winner = match.winner_side
+
+      if (match.sets && match.sets.length > 0) {
+        let setsWonA = 0
+        let setsWonB = 0
+        match.sets.forEach((s: any) => {
+          if (s.winner === 'A') setsWonA++
+          else if (s.winner === 'B') setsWonB++
+        })
+
+        setsDetails = match.sets.map((s: any) => `${s.score_a}-${s.score_b}`).join(' | ')
+
+        if (match.status === 'completed') {
+          scoreA = String(setsWonA)
+          scoreB = String(setsWonB)
+        } else if (match.status === 'live') {
+          const currentSet = match.sets[match.sets.length - 1]
+          scoreA = `${setsWonA} (${currentSet.score_a})`
+          scoreB = `${setsWonB} (${currentSet.score_b})`
+        }
+      }
     } else if (!ns) {
       ns = ['TBD', 'TBD']
     }
 
+    const isWinnerA = winner === 'A'
+    const isWinnerB = winner === 'B'
+
     return (
-      <div style={{ background: 'var(--paper)', border: '1px solid ' + (live ? 'var(--accent)' : 'var(--line)'), borderRadius: 6, padding: '8px 10px', fontSize: 12.5, position: 'relative', boxShadow: live ? '0 0 0 3px oklch(0.94 0.04 25)' : 'none' }}>
+      <div 
+        title={setsDetails ? `Tỷ số các set: ${setsDetails}` : undefined}
+        style={{ 
+          background: 'var(--paper)', 
+          border: '1px solid ' + (live ? 'var(--accent)' : 'var(--line)'), 
+          borderRadius: 8, 
+          padding: '10px 12px', 
+          fontSize: 12.5, 
+          position: 'relative', 
+          boxShadow: live ? '0 0 0 3px oklch(0.94 0.04 25)' : '0 2px 4px rgba(0,0,0,0.02)',
+          minWidth: 200,
+          transition: 'all 0.2s ease',
+          cursor: match ? 'pointer' : 'default'
+        }}
+      >
         {live && <span className="pill live" style={{ position: 'absolute', top: -8, right: 8, fontSize: 9.5, padding: '1px 6px' }}><span className="dot live-dot"/>LIVE</span>}
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}><span>{ns[0]}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', color: isWinnerB ? 'var(--ink-3)' : 'var(--ink)' }}>
+          <span style={{ fontWeight: isWinnerA ? 700 : 500 }}>{ns[0]}</span>
+          {scoreA && <span className="mono" style={{ fontWeight: isWinnerA ? 700 : 400, marginLeft: 8, fontSize: 12 }}>{scoreA}</span>}
+        </div>
         <div style={{ borderTop: '1px solid var(--line-2)' }}/>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}><span>{ns[1]}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', color: isWinnerA ? 'var(--ink-3)' : 'var(--ink)' }}>
+          <span style={{ fontWeight: isWinnerB ? 700 : 500 }}>{ns[1]}</span>
+          {scoreB && <span className="mono" style={{ fontWeight: isWinnerB ? 700 : 400, marginLeft: 8, fontSize: 12 }}>{scoreB}</span>}
+        </div>
+        {setsDetails && (
+          <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 4, borderTop: '1px dashed var(--line-2)', paddingTop: 4, textAlign: 'center' }}>
+            {setsDetails}
+          </div>
+        )}
       </div>
     )
   }
@@ -268,14 +326,19 @@ export function BracketView() {
                 return a.localeCompare(b)
               })
 
-              return sortedRounds.map(rName => (
-                <div key={rName} style={col}>
-                  <div className="caps" style={{ textAlign: 'center', marginBottom: 8, fontWeight: 700 }}>{rName}</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24, justifyContent: 'space-around', height: '100%' }}>
-                    {roundsMap[rName].map(m => <MatchCard key={m.id} match={m} />)}
+              return sortedRounds.map(rName => {
+                const roundMatches = [...roundsMap[rName]].sort((a, b) => {
+                  return (a.code || '').localeCompare(b.code || '')
+                })
+                return (
+                  <div key={rName} style={col}>
+                    <div className="caps" style={{ textAlign: 'center', marginBottom: 8, fontWeight: 700 }}>{rName}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, justifyContent: 'space-around', height: '100%' }}>
+                      {roundMatches.map(m => <MatchCard key={m.id} match={m} />)}
+                    </div>
                   </div>
-                </div>
-              ))
+                )
+              })
             })()}
           </>
         )}

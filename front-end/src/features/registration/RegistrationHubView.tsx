@@ -59,11 +59,22 @@ export default function RegistrationHubView() {
     }
   }
 
-  // Split online vs offline logic if we had a flag. For now just show all in both for demonstration
-  // or show pending in online and approved in offline, etc.
-  // Actually, we'll just show all in online tab for now as 'online regs'
-  const onlineRegs = registrations.filter(r => r.status === 'registered')
-  const offlineRegs = registrations.filter(r => r.status !== 'registered')
+  const [searchText, setSearchText] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL')
+
+  const filteredRegistrations = registrations.filter(r => {
+    const matchesSearch = searchText.trim() === '' || 
+      (r.player_name && r.player_name.toLowerCase().includes(searchText.toLowerCase())) ||
+      (r.club_name && r.club_name.toLowerCase().includes(searchText.toLowerCase())) ||
+      (r.id && `REG-${r.id}`.toLowerCase().includes(searchText.toLowerCase()));
+      
+    const matchesCategory = selectedCategory === 'ALL' || r.category_code === selectedCategory;
+    
+    return matchesSearch && matchesCategory;
+  })
+
+  const onlineRegs = filteredRegistrations.filter(r => r.status === 'registered')
+  const offlineRegs = filteredRegistrations.filter(r => r.status !== 'registered')
 
   return (
     <div style={{ padding: '24px 32px', height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -101,6 +112,39 @@ export default function RegistrationHubView() {
         >
           Theo Nội dung thi đấu
         </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 12, marginTop: 16, marginBottom: 16, alignItems: 'center' }}>
+        <div style={{ position: 'relative', width: 280 }}>
+          <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-3)', pointerEvents: 'none', display: 'flex' }}>
+            <Icon name="search" size={14}/>
+          </span>
+          <input 
+            value={searchText} 
+            onChange={e => setSearchText(e.target.value)} 
+            placeholder="Tìm theo tên VĐV, CLB, mã HS..." 
+            style={{ 
+              width: '100%', padding: '8px 10px 8px 32px', border: '1px solid var(--line)', 
+              borderRadius: 6, background: 'var(--paper)', fontSize: 13, 
+              color: 'var(--ink)', boxSizing: 'border-box', outline: 'none'
+            }} 
+          />
+        </div>
+        <select 
+          value={selectedCategory} 
+          onChange={e => setSelectedCategory(e.target.value)} 
+          style={{ 
+            padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 6, 
+            background: 'var(--paper)', fontSize: 13, color: 'var(--ink)', cursor: 'pointer', outline: 'none'
+          }}
+        >
+          <option value="ALL">Tất cả nội dung</option>
+          <option value="MS">Đơn nam (MS)</option>
+          <option value="WS">Đơn nữ (WS)</option>
+          <option value="MD">Đôi nam (MD)</option>
+          <option value="WD">Đôi nữ (WD)</option>
+          <option value="XD">Đôi nam nữ (XD)</option>
+        </select>
       </div>
 
       <div style={{ flex: 1, minHeight: 0 }}>

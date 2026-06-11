@@ -1,8 +1,35 @@
-import { useStore } from '../../data/store'
+import { useEffect } from 'react'
+import { useStore, fetchMatches } from '../../data/store'
 import { CATEGORIES } from '../../data/constants'
+import { socket } from '../../lib/socket'
 
 export default function LiveMatchesView() {
-  const { liveMatches } = useStore()
+  const { liveMatches, activeTournamentId } = useStore()
+
+  useEffect(() => {
+    // Fetch immediately
+    fetchMatches(activeTournamentId || undefined)
+
+    // Connect socket and listen
+    socket.connect()
+    
+    const handleScoreUpdate = () => {
+      fetchMatches(activeTournamentId || undefined)
+    }
+
+    socket.on('global-score-update', handleScoreUpdate)
+
+    // Poll every 5 seconds as fallback
+    const timer = setInterval(() => {
+      fetchMatches(activeTournamentId || undefined)
+    }, 5000)
+
+    return () => {
+      clearInterval(timer)
+      socket.off('global-score-update', handleScoreUpdate)
+      socket.disconnect()
+    }
+  }, [activeTournamentId])
   
   if (!liveMatches || liveMatches.length === 0) {
     return (
