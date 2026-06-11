@@ -285,6 +285,9 @@ export async function addMatchParticipant(matchId, { side, playerId, seed }) {
 export async function addSetScore(matchId, { setNo, scoreA, scoreB }) {
   const match = await getMatchById(matchId);
   if (!match) throw new AppError(404, 'Match not found', 'NOT_FOUND');
+  if (match.status === 'completed') {
+    throw new AppError(400, 'Không thể chỉnh sửa điểm số của trận đấu đã hoàn thành', 'MATCH_ALREADY_COMPLETED');
+  }
 
   // Logic xác định set winner: ví dụ 21 điểm, deuce (chênh 2 điểm, max 30)
   let winner = null;
@@ -310,6 +313,12 @@ export async function addSetScore(matchId, { setNo, scoreA, scoreB }) {
 }
 
 export async function addScoreEvent(matchId, { setNo, scorer, prevScoreA, prevScoreB, prevServing, causedSetEnd }) {
+  const match = await getMatchById(matchId);
+  if (!match) throw new AppError(404, 'Match not found', 'NOT_FOUND');
+  if (match.status === 'completed') {
+    throw new AppError(400, 'Không thể chỉnh sửa điểm số của trận đấu đã hoàn thành', 'MATCH_ALREADY_COMPLETED');
+  }
+
   const result = await query(
     `INSERT INTO score_events (match_id, set_no, scorer, prev_score_a, prev_score_b, prev_serving, caused_set_end)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
