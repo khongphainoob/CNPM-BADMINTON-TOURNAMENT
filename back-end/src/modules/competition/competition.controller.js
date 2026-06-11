@@ -1,6 +1,6 @@
 import {
   listMatches, getMatchById, createMatch, updateMatch,
-  scheduleMatch, startMatch, completeMatch, addMatchParticipant,
+  scheduleMatch, startMatch, completeMatch, setMatchResult, addMatchParticipant,
   addSetScore, addScoreEvent, listScoreEvents, undoLastScore,
   generateRandomDraw
 } from './competition.service.js';
@@ -55,6 +55,11 @@ export async function patchStart(req, res, next) {
 
 export async function patchComplete(req, res, next) {
   try { return success(res, await completeMatch(req.params.id)); }
+  catch (e) { return next(e); }
+}
+
+export async function patchResult(req, res, next) {
+  try { return success(res, await setMatchResult(req.params.id, req.body)); }
   catch (e) { return next(e); }
 }
 

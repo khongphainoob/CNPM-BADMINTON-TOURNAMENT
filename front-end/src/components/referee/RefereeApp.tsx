@@ -3,6 +3,8 @@ import { useMatch } from '../../hooks/useMatch'
 import PreMatch from './PreMatch'
 import Scoring from './Scoring'
 import SetEndPanel from './SetEndPanel'
+import IntervalOverlay from './IntervalOverlay'
+import AbnormalEndSheet from './AbnormalEndSheet'
 import MatchEndScreen from './MatchEndScreen'
 import RefereeMatchList from './RefereeMatchList'
 import SyncLogView from '../../features/referee/SyncLogView'
@@ -50,22 +52,22 @@ export default function RefereeApp({ onBack, onLogout }: Props) {
 
 function RefereeMatchApp({ matchData, onBack, onLogout }: { matchData: any; onBack: () => void; onLogout?: () => void }) {
   const { state, dispatch } = useMatch(matchData)
+  const [abnormalOpen, setAbnormalOpen] = useState(false)
 
   if (state.phase === 'match-end') {
-    return <MatchEndScreen state={state} dispatch={dispatch} onBack={onBack} onLogout={onLogout} />
+    return <MatchEndScreen state={state} onBack={onBack} onLogout={onLogout} />
+  }
+
+  if (state.phase === 'pre') {
+    return <PreMatch state={state} dispatch={dispatch} onBack={onBack} />
   }
 
   return (
     <div style={{ height: '100dvh', width: '100%', overflow: 'hidden', position: 'relative', background: 'var(--color-surface)' }}>
-      {state.phase === 'pre' && (
-        <PreMatch state={state} dispatch={dispatch} onBack={onBack} />
-      )}
-      {(state.phase === 'scoring' || state.phase === 'set-end') && (
-        <Scoring state={state} dispatch={dispatch} />
-      )}
-      {state.phase === 'set-end' && (
-        <SetEndPanel state={state} dispatch={dispatch} />
-      )}
+      <Scoring state={state} dispatch={dispatch} onAbnormal={() => setAbnormalOpen(true)} />
+      {state.phase === 'interval' && <IntervalOverlay state={state} dispatch={dispatch} />}
+      {state.phase === 'game-end' && <SetEndPanel state={state} dispatch={dispatch} />}
+      {abnormalOpen && <AbnormalEndSheet state={state} dispatch={dispatch} onClose={() => setAbnormalOpen(false)} />}
     </div>
   )
 }

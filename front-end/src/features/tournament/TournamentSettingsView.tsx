@@ -48,9 +48,6 @@ export default function TournamentSettingsView() {
   const handleSaveTournament = async (data: any) => {
     if (!activeTournamentId) return
     try {
-      console.log('--- FORM SUBMIT DATA (BM10 - Update Tournament) ---')
-      console.log(data)
-      
       if (tournament) {
         const payload = {
           code: data.slug,
@@ -59,9 +56,6 @@ export default function TournamentSettingsView() {
           endDate: data.endDate
           // TODO: handle organizer, location, description if backend supports it
         }
-        console.log('--- MAPPED PAYLOAD ---')
-        console.log(payload)
-
         await (tournamentApi as any).update(activeTournamentId, payload)
         alert('Cập nhật thành công')
       } else {
@@ -88,9 +82,6 @@ export default function TournamentSettingsView() {
   const handleSaveEvent = async (data: any) => {
     if (!activeTournamentId) return
     try {
-      console.log('--- EVENT FORM SUBMIT DATA (BM7) ---')
-      console.log(data)
-
       if (editingEvent) {
         await tournamentApi.updateEvent(activeTournamentId, editingEvent.id, data)
         alert('Cập nhật hạng mục thành công')

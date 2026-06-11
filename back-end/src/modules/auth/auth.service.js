@@ -188,6 +188,13 @@ export async function approveUser(userId, roleCode) {
     [userId, roleId]
   );
 
+  // Notify the user that their account was approved (in-app).
+  await query(
+    `INSERT INTO notifications (user_id, channel, subject, body, status, sent_at)
+     VALUES ($1, 'in_app', $2, $3, 'sent', now())`,
+    [userId, 'Tài khoản đã được duyệt', `Tài khoản của bạn đã được phê duyệt với vai trò ${roleCode}.`]
+  );
+
   return getUserWithRoles(userId);
 }
 

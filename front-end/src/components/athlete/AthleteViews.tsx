@@ -143,8 +143,7 @@ export function AthleteOverview({ me }: { me: any }) {
         <PaymentModal 
           registration={{ id: 'HS-1024', name: me.name || 'Nguyễn Hải Đăng', amount: 500000, event: 'Đơn nam thi đấu' }}
           onClose={() => setShowPayment(false)}
-          onPay={(data) => {
-            console.log('Payment submitted:', data)
+          onPay={() => {
             alert('Đã gửi thông tin thanh toán thành công! Vui lòng chờ BTC xác nhận.')
             setHasPaid(true)
             setShowPayment(false)

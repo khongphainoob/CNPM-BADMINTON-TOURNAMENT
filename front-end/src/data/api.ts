@@ -180,6 +180,10 @@ export const competitionApi = {
     const res = await apiClient.patch(`/api/competition/matches/${id}/complete`)
     return res.data.data
   },
+  setResult: async (id: number | string, data: { resultType: string; winnerSide: 'A' | 'B'; note?: string }) => {
+    const res = await apiClient.patch(`/api/competition/matches/${id}/result`, data)
+    return res.data.data
+  },
   getScoreEvents: async (id: number | string) => {
     const res = await apiClient.get(`/api/competition/matches/${id}/score-events`)
     return res.data.data

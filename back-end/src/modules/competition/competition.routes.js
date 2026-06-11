@@ -3,11 +3,11 @@ import { requireAuth, requireRole } from '../../middleware/auth.js';
 import { validateBody } from '../../utils/validation.js';
 import {
   createMatchSchema, updateMatchSchema, scheduleMatchSchema,
-  addMatchParticipantSchema, addSetScoreSchema, scoreEventSchema
+  addMatchParticipantSchema, addSetScoreSchema, scoreEventSchema, matchResultSchema
 } from './competition.schema.js';
 import {
   getHealth, getMatches, getMatch, postMatch, putMatch,
-  patchSchedule, patchStart, patchComplete, postParticipant,
+  patchSchedule, patchStart, patchComplete, patchResult, postParticipant,
   postSetScore, postScoreEvent, getScoreEvents, postUndoScore,
   postGenerateDraw
 } from './competition.controller.js';
@@ -29,6 +29,7 @@ router.put('/matches/:id', requireAuth, requireRole('admin', 'btc'), validateBod
 router.patch('/matches/:id/schedule', requireAuth, requireRole('admin', 'btc'), validateBody(scheduleMatchSchema), patchSchedule);
 router.patch('/matches/:id/start', requireAuth, requireRole('admin', 'btc', 'referee'), patchStart);
 router.patch('/matches/:id/complete', requireAuth, requireRole('admin', 'btc', 'referee'), patchComplete);
+router.patch('/matches/:id/result', requireAuth, requireRole('admin', 'btc', 'referee'), validateBody(matchResultSchema), patchResult);
 
 // Participants
 router.post('/matches/:id/participants', requireAuth, requireRole('admin', 'btc'), validateBody(addMatchParticipantSchema), postParticipant);

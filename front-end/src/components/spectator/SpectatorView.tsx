@@ -66,6 +66,9 @@ function SpectatorNav({ tab, setTab, onLogout }: { tab: Tab; setTab: (t: Tab) =>
     ['home',     'Tổng quan'],
     ['ranking',  'Bảng xếp hạng'],
     ['calendar', 'Lịch thi đấu'],
+    ['live',     'Trực tiếp'],
+    ['results',  'Kết quả'],
+    ['bracket',  'Sơ đồ'],
     ['players',  'Vận động viên'],
     ['news',     'Tin tức'],
   ]
@@ -126,6 +129,9 @@ const HERO_CONFIG: Record<string, { label: string; lines: string[]; accent: numb
   calendar: { label: 'Lịch thi đấu · 18–26 tháng 4',             lines: ['Lịch', 'Thi Đấu', '& Kết Quả'],                    accent: 1, sub: '284 trận · 8 sân · Bảng đấu + Loại trực tiếp' },
   players:  { label: 'Danh sách vận động viên · 2026',            lines: ['Vận Động', 'Viên', 'Tham Dự'],                     accent: 1, sub: '384 vận động viên đã đăng ký từ các câu lạc bộ toàn quốc' },
   news:     { label: 'Tin tức & truyền thông',                    lines: ['Tin Tức', '&', 'Highlight'],                        accent: 0, sub: 'Bài viết, thông báo và highlight từ ban tổ chức giải đấu' },
+  live:     { label: 'Đang thi đấu trực tiếp',                     lines: ['Trực Tiếp', '&', 'Tỷ Số'],                          accent: 0, sub: 'Theo dõi tỷ số các trận đang diễn ra · cập nhật mỗi 5 giây' },
+  results:  { label: 'Kết quả thi đấu',                            lines: ['Kết Quả', '&', 'Thống Kê'],                         accent: 0, sub: 'Kết quả các trận đã hoàn thành theo từng nội dung' },
+  bracket:  { label: 'Sơ đồ nhánh đấu loại trực tiếp',             lines: ['Sơ Đồ', 'Nhánh', 'Đấu'],                            accent: 1, sub: 'Nhánh đấu loại trực tiếp theo từng nội dung thi đấu' },
 }
 
 function SpectatorHero({ tab }: { tab: Tab }) {

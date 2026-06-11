@@ -70,7 +70,7 @@ INSERT INTO categories (code, label, is_doubles) VALUES
 INSERT INTO venues (name, address, province) VALUES
   ('Nhà thi đấu Phú Thọ', '1 Lữ Gia, Q.11', 'TP.HCM');
 
-INSERT INTO tournaments (code, name, name_en, venue_id, start_date, end_date, status, format, budget, revenue)
+INSERT INTO tournaments (code, name, name_en, venue_id, start_date, end_date, status, format, budget, revenue, created_by)
 VALUES (
   'VNBAD-2026-03',
   'Giải Cầu Lông Các CLB Toàn Quốc 2026',
@@ -78,7 +78,8 @@ VALUES (
   (SELECT id FROM venues WHERE name='Nhà thi đấu Phú Thọ'),
   '2026-04-18', '2026-04-26',
   'live', 'Bảng → Loại trực tiếp',
-  780000000, 512400000
+  780000000, 512400000,
+  (SELECT id FROM users WHERE email='phamlam@shuttleops.vn')   -- BTC sở hữu giải demo
 );
 
 INSERT INTO events (tournament_id, category_code, label)
@@ -233,6 +234,48 @@ VALUES
   ((SELECT id FROM users WHERE email='phamlam@shuttleops.vn'),
    'tournament.create', 'tournament', 'VNBAD-2026-03',
    'Tạo giải Giải Cầu Lông Các CLB Toàn Quốc 2026');
+
+-- -----------------------------------------------------------------------------
+-- DEMO DATA: thêm VĐV để demo bốc thăm (draw) bracket nhiều người + ghép cặp thủ công
+--   - 12 nam đăng ký Đơn nam (MS)  → cùng 4 VĐV cũ = 16 người, đủ bracket 16
+--   - 6  nữ  đăng ký Đơn nữ (WS)   → chưa bốc thăm, dùng demo ghép cặp thủ công
+-- -----------------------------------------------------------------------------
+INSERT INTO players (code, club_id, name, gender, dob, rating, tier, profile_status) VALUES
+  ('A-0301', (SELECT id FROM clubs WHERE code='HCM'), 'Ngô Gia Bảo',     'M', '2000-02-01', 1980, 'B', 'approved'),
+  ('A-0302', (SELECT id FROM clubs WHERE code='HN'),  'Phan Anh Tuấn',   'M', '1999-03-12', 1955, 'B', 'approved'),
+  ('A-0303', (SELECT id FROM clubs WHERE code='QD'),  'Hoàng Minh Khôi', 'M', '2001-05-20', 1910, 'B', 'approved'),
+  ('A-0304', (SELECT id FROM clubs WHERE code='BCM'), 'Đặng Quốc Toản',  'M', '2002-07-08', 1875, 'B', 'approved'),
+  ('A-0305', (SELECT id FROM clubs WHERE code='DN'),  'Lý Hoàng Nam',    'M', '2003-09-15', 1840, 'B', 'approved'),
+  ('A-0306', (SELECT id FROM clubs WHERE code='BG'),  'Trịnh Văn Sơn',   'M', '2000-11-30', 1790, 'C', 'approved'),
+  ('A-0307', (SELECT id FROM clubs WHERE code='HP'),  'Mai Đức Thịnh',   'M', '2004-01-22', 1760, 'C', 'approved'),
+  ('A-0308', (SELECT id FROM clubs WHERE code='TH'),  'Cao Bá Đạt',      'M', '2002-04-18', 1730, 'C', 'approved'),
+  ('A-0309', (SELECT id FROM clubs WHERE code='NA'),  'Dương Hữu Phước', 'M', '2005-06-09', 1700, 'C', 'approved'),
+  ('A-0310', (SELECT id FROM clubs WHERE code='CAND'),'Tô Văn Hậu',      'M', '2001-08-27', 1665, 'C', 'approved'),
+  ('A-0311', (SELECT id FROM clubs WHERE code='HCM'), 'Vương Tấn Lực',   'M', '2003-10-03', 1630, 'C', 'approved'),
+  ('A-0312', (SELECT id FROM clubs WHERE code='HN'),  'Đỗ Nhật Huy',     'M', '2004-12-14', 1600, 'C', 'approved'),
+  ('A-0320', (SELECT id FROM clubs WHERE code='HN'),  'Trần Thanh Thảo', 'F', '2001-02-11', 1820, 'B', 'approved'),
+  ('A-0321', (SELECT id FROM clubs WHERE code='HCM'), 'Nguyễn Mỹ Linh',  'F', '2002-03-19', 1785, 'B', 'approved'),
+  ('A-0322', (SELECT id FROM clubs WHERE code='DN'),  'Phạm Khánh Vy',   'F', '2003-05-25', 1740, 'C', 'approved'),
+  ('A-0323', (SELECT id FROM clubs WHERE code='QD'),  'Lê Thảo Nhi',     'F', '2004-07-07', 1705, 'C', 'approved'),
+  ('A-0324', (SELECT id FROM clubs WHERE code='BCM'), 'Võ Hà My',        'F', '2005-09-13', 1670, 'C', 'approved'),
+  ('A-0325', (SELECT id FROM clubs WHERE code='HP'),  'Bùi Diễm Quỳnh',  'F', '2002-11-21', 1640, 'C', 'approved');
+
+-- Đăng ký 12 nam vào Đơn nam (MS); A-0301 hạt giống 1, A-0302 hạt giống 2 (còn lại không seed)
+INSERT INTO event_participants (event_id, player_id, seed)
+SELECT e.id, p.id, CASE p.code WHEN 'A-0301' THEN 1 WHEN 'A-0302' THEN 2 END
+FROM events e
+JOIN tournaments t ON t.id = e.tournament_id
+JOIN players p ON p.code IN ('A-0301','A-0302','A-0303','A-0304','A-0305','A-0306',
+                             'A-0307','A-0308','A-0309','A-0310','A-0311','A-0312')
+WHERE t.code='VNBAD-2026-03' AND e.category_code='MS';
+
+-- Đăng ký 6 nữ vào Đơn nữ (WS) — chưa bốc thăm để demo ghép cặp thủ công
+INSERT INTO event_participants (event_id, player_id, seed)
+SELECT e.id, p.id, NULL
+FROM events e
+JOIN tournaments t ON t.id = e.tournament_id
+JOIN players p ON p.code IN ('A-0320','A-0321','A-0322','A-0323','A-0324','A-0325')
+WHERE t.code='VNBAD-2026-03' AND e.category_code='WS';
 
 -- =============================================================================
 -- HẾT SEED

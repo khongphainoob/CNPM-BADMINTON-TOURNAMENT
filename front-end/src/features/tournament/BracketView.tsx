@@ -114,8 +114,8 @@ export function BracketView() {
     if (match) {
       const p1 = match.participants?.find((p:any) => p.side === 'A')
       const p2 = match.participants?.find((p:any) => p.side === 'B')
-      const p1Name = p1?.player_name || (match.status === 'completed' && match.winner_side === 'B' ? 'BYE' : 'TBD')
-      const p2Name = p2?.player_name || (match.status === 'completed' && match.winner_side === 'A' ? 'BYE' : 'TBD')
+      const p1Name = p1?.player?.name || (match.status === 'completed' && match.winner_side === 'B' ? 'BYE' : 'TBD')
+      const p2Name = p2?.player?.name || (match.status === 'completed' && match.winner_side === 'A' ? 'BYE' : 'TBD')
       ns = [p1Name, p2Name]
       live = match.status === 'live'
     } else if (!ns) {

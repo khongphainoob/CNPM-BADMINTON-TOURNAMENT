@@ -35,6 +35,12 @@ export const addSetScoreSchema = z.object({
   scoreB: z.number().int().min(0)
 });
 
+export const matchResultSchema = z.object({
+  resultType: z.enum(['walkover', 'disqualification']),
+  winnerSide: z.enum(['A', 'B']),
+  note: z.string().optional()
+});
+
 export const scoreEventSchema = z.object({
   setNo: z.number().int().min(1),
   scorer: z.enum(['A', 'B']),

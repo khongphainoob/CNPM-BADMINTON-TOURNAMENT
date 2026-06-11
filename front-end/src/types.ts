@@ -3,54 +3,56 @@ export type Player = {
   name: string;
 };
 
-export type SetScore = {
-  p1: number;
-  p2: number;
-  winner: 'p1' | 'p2';
+export type SideId = 'A' | 'B';
+export type PlayerIdx = 0 | 1;
+export type CourtSide = 'right' | 'left';
+export type ResultType = 'normal' | 'walkover' | 'disqualification';
+
+export type GameScore = { A: number; B: number; winner: SideId };
+
+export type Side = {
+  players: Player[];      // 1 = singles, 2 = doubles
+  rightIndex: PlayerIdx;  // which player index currently stands in the right service court
 };
 
-export type MatchPhase = 'pre' | 'scoring' | 'set-end' | 'match-end';
-
-export type HistoryEntry = {
-  scorer: 'p1' | 'p2';
-  prevScore: { p1: number; p2: number };
-  prevServing: 'p1' | 'p2';
-  causedSetEnd: boolean;
-};
+export type MatchPhase = 'pre' | 'scoring' | 'interval' | 'game-end' | 'match-end';
 
 export type MatchState = {
   phase: MatchPhase;
+  isDoubles: boolean;
+  pointsPerSet: number;   // race target (e.g. 21); win by 2; cap at pointsPerSet + 9
+  gamesToWin: number;     // games needed to win the match (ceil(maxSets/2))
   court: string;
   tournament: string;
-  p1: Player;
-  p2: Player;
-  serving: 'p1' | 'p2';
-  currentSet: { p1: number; p2: number };
-  completedSets: SetScore[];
-  setsWon: { p1: number; p2: number };
-  history: HistoryEntry[];
-  undoVisible: boolean;
+  category: string;
+  sides: { A: Side; B: Side };
+  servingSide: SideId;
+  currentGame: { A: number; B: number };
+  completedGames: GameScore[];
+  gamesWon: { A: number; B: number };
+  intervalTaken: boolean;                          // mid-game interval already used this game
+  interval: { kind: 'mid'; secondsLeft: number } | null;
+  displaySwap: boolean;                            // change-of-ends: swap on-screen top/bottom
+  result: { type: ResultType; winner: SideId; note?: string } | null;
+  history: Snapshot[];                             // for multi-step undo (within the current game)
   elapsedSeconds: number;
 };
+
+// A point-in-time snapshot used to reverse a rally (everything except the timer + history itself).
+export type Snapshot = Omit<MatchState, 'history' | 'elapsedSeconds'>;
+
+export type MatchAction =
+  | { type: 'SETUP_GAME'; servingSide: SideId; serverIdx: PlayerIdx; receiverIdx: PlayerIdx }
+  | { type: 'SCORE'; side: SideId }
+  | { type: 'UNDO' }
+  | { type: 'END_INTERVAL' }
+  | { type: 'END_ABNORMAL'; resultType: 'walkover' | 'disqualification'; winner: SideId; note?: string }
+  | { type: 'TICK' }
+  | { type: 'RESET' };
 
 export type Role = 'spectator' | 'referee' | 'btc' | 'athlete' | 'admin';
 
 export type LiveMatchStatus = 'live' | 'upcoming' | 'completed';
-
-export type LiveMatchData = {
-  id: string;
-  court: string;
-  category: string;
-  p1: { name: string };
-  p2: { name: string };
-  currentScore: { p1: number; p2: number };
-  completedSets: Array<{ p1: number; p2: number; winner: 'p1' | 'p2' }>;
-  setsWon: { p1: number; p2: number };
-  serving: 'p1' | 'p2';
-  elapsedSeconds: number;
-  status: LiveMatchStatus;
-  scheduledTime?: string;
-};
 
 export type TournamentInfo = {
   name: string;
@@ -58,12 +60,3 @@ export type TournamentInfo = {
   date: string;
   venue: string;
 };
-
-export type MatchAction =
-  | { type: 'START_MATCH'; serving: 'p1' | 'p2' }
-  | { type: 'SCORE'; player: 'p1' | 'p2' }
-  | { type: 'UNDO' }
-  | { type: 'HIDE_UNDO' }
-  | { type: 'CONFIRM_NEXT_SET'; serving: 'p1' | 'p2' }
-  | { type: 'TICK' }
-  | { type: 'RESET' };

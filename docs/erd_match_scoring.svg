@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 920" font-family="Arial, sans-serif" font-size="13">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="black"/>
+    </marker>
+    <style>
+      .tbl { fill: white; stroke: black; stroke-width: 1.2; }
+      .hd  { fill: white; stroke: black; stroke-width: 1.2; }
+      .ttl { font-weight: bold; text-anchor: middle; }
+      .fld { font-size: 12px; }
+      .pk  { font-weight: bold; text-decoration: underline; }
+      .fk  { text-decoration: underline; }
+      .lbl { font-size: 12px; font-weight: bold; }
+      .ln  { stroke: black; stroke-width: 1.1; fill: none; }
+    </style>
+  </defs>
+
+  <!-- courts -->
+  <g>
+    <rect class="tbl" x="40" y="60" width="220" height="124"/>
+    <rect class="hd" x="40" y="60" width="220" height="22"/>
+    <text class="ttl" x="150" y="76">courts</text>
+    <line x1="40" y1="82" x2="260" y2="82" stroke="black"/>
+    <text class="fld pk" x="50" y="98">id</text>
+    <text class="fld fk" x="50" y="118">tournament_id</text>
+    <text class="fld"    x="50" y="138">label</text>
+    <text class="fld"    x="50" y="158">floor</text>
+    <text class="fld"    x="50" y="178">status</text>
+  </g>
+
+  <!-- referee_assignments -->
+  <g>
+    <rect class="tbl" x="320" y="40" width="240" height="184"/>
+    <rect class="hd" x="320" y="40" width="240" height="22"/>
+    <text class="ttl" x="440" y="56">referee_assignments</text>
+    <line x1="320" y1="62" x2="560" y2="62" stroke="black"/>
+    <text class="fld pk" x="330" y="78">id</text>
+    <text class="fld fk" x="330" y="98">match_id</text>
+    <text class="fld fk" x="330" y="118">referee_id</text>
+    <text class="fld"    x="330" y="138">role</text>
+    <text class="fld fk" x="330" y="158">assigned_by</text>
+    <text class="fld"    x="330" y="178">assigned_at</text>
+    <text class="fld"    x="330" y="198">status</text>
+    <text class="fld"    x="330" y="218">note</text>
+  </g>
+
+  <!-- referees -->
+  <g>
+    <rect class="tbl" x="620" y="60" width="220" height="124"/>
+    <rect class="hd" x="620" y="60" width="220" height="22"/>
+    <text class="ttl" x="730" y="76">referees</text>
+    <line x1="620" y1="82" x2="840" y2="82" stroke="black"/>
+    <text class="fld pk" x="630" y="98">id</text>
+    <text class="fld"    x="630" y="118">code</text>
+    <text class="fld"    x="630" y="138">name</text>
+    <text class="fld"    x="630" y="158">cert</text>
+    <text class="fld"    x="630" y="178">phone</text>
+  </g>
+
+  <!-- tournaments -->
+  <g>
+    <rect class="tbl" x="920" y="320" width="220" height="164"/>
+    <rect class="hd" x="920" y="320" width="220" height="22"/>
+    <text class="ttl" x="1030" y="336">tournaments</text>
+    <line x1="920" y1="342" x2="1140" y2="342" stroke="black"/>
+    <text class="fld pk" x="930" y="358">id</text>
+    <text class="fld"    x="930" y="378">code</text>
+    <text class="fld"    x="930" y="398">name</text>
+    <text class="fld fk" x="930" y="418">venue_id</text>
+    <text class="fld"    x="930" y="438">start_date</text>
+    <text class="fld"    x="930" y="458">end_date</text>
+    <text class="fld"    x="930" y="478">status</text>
+  </g>
+
+  <!-- events -->
+  <g>
+    <rect class="tbl" x="620" y="320" width="220" height="144"/>
+    <rect class="hd" x="620" y="320" width="220" height="22"/>
+    <text class="ttl" x="730" y="336">events</text>
+    <line x1="620" y1="342" x2="840" y2="342" stroke="black"/>
+    <text class="fld pk" x="630" y="358">id</text>
+    <text class="fld fk" x="630" y="378">tournament_id</text>
+    <text class="fld fk" x="630" y="398">category_code</text>
+    <text class="fld"    x="630" y="418">label</text>
+    <text class="fld"    x="630" y="438">max_sets</text>
+    <text class="fld"    x="630" y="458">points_per_set</text>
+  </g>
+
+  <!-- matches (center, main) -->
+  <g>
+    <rect class="tbl" x="320" y="280" width="240" height="264"/>
+    <rect class="hd" x="320" y="280" width="240" height="22"/>
+    <text class="ttl" x="440" y="296">matches</text>
+    <line x1="320" y1="302" x2="560" y2="302" stroke="black"/>
+    <text class="fld pk" x="330" y="318">id</text>
+    <text class="fld"    x="330" y="338">code</text>
+    <text class="fld fk" x="330" y="358">event_id</text>
+    <text class="fld fk" x="330" y="378">court_id</text>
+    <text class="fld"    x="330" y="398">round</text>
+    <text class="fld"    x="330" y="418">scheduled_at</text>
+    <text class="fld"    x="330" y="438">started_at</text>
+    <text class="fld"    x="330" y="458">ended_at</text>
+    <text class="fld"    x="330" y="478">status</text>
+    <text class="fld"    x="330" y="498">winner_side</text>
+    <text class="fld"    x="330" y="518">max_sets</text>
+    <text class="fld"    x="330" y="538">deleted_at</text>
+  </g>
+
+  <!-- match_scores (left) -->
+  <g>
+    <rect class="tbl" x="40" y="280" width="240" height="284"/>
+    <rect class="hd" x="40" y="280" width="240" height="22"/>
+    <text class="ttl" x="160" y="296">match_scores</text>
+    <line x1="40" y1="302" x2="280" y2="302" stroke="black"/>
+    <text class="fld pk" x="50" y="318">id</text>
+    <text class="fld fk" x="50" y="338">match_id</text>
+    <text class="fld"    x="50" y="358">set_no</text>
+    <text class="fld"    x="50" y="378">scorer_side</text>
+    <text class="fld"    x="50" y="398">new_score_a</text>
+    <text class="fld"    x="50" y="418">new_score_b</text>
+    <text class="fld"    x="50" y="438">new_serving</text>
+    <text class="fld"    x="50" y="458">caused_set_end</text>
+    <text class="fld"    x="50" y="478">is_undone</text>
+    <text class="fld"    x="50" y="498">client_event_id</text>
+    <text class="fld fk" x="50" y="518">recorded_by</text>
+    <text class="fld"    x="50" y="538">client_timestamp</text>
+    <text class="fld"    x="50" y="558">server_timestamp</text>
+  </g>
+
+  <!-- users -->
+  <g>
+    <rect class="tbl" x="40" y="700" width="220" height="124"/>
+    <rect class="hd" x="40" y="700" width="220" height="22"/>
+    <text class="ttl" x="150" y="716">users</text>
+    <line x1="40" y1="722" x2="260" y2="722" stroke="black"/>
+    <text class="fld pk" x="50" y="738">id</text>
+    <text class="fld"    x="50" y="758">email</text>
+    <text class="fld"    x="50" y="778">name</text>
+    <text class="fld fk" x="50" y="798">primary_role_id</text>
+    <text class="fld"    x="50" y="818">status</text>
+  </g>
+
+  <!-- leaderboards -->
+  <g>
+    <rect class="tbl" x="320" y="640" width="240" height="244"/>
+    <rect class="hd" x="320" y="640" width="240" height="22"/>
+    <text class="ttl" x="440" y="656">leaderboards</text>
+    <line x1="320" y1="662" x2="560" y2="662" stroke="black"/>
+    <text class="fld pk" x="330" y="678">id</text>
+    <text class="fld fk" x="330" y="698">tournament_id</text>
+    <text class="fld fk" x="330" y="718">event_id</text>
+    <text class="fld fk" x="330" y="738">player_id</text>
+    <text class="fld"    x="330" y="758">rank</text>
+    <text class="fld"    x="330" y="778">points</text>
+    <text class="fld"    x="330" y="798">matches_won</text>
+    <text class="fld"    x="330" y="818">matches_lost</text>
+    <text class="fld"    x="330" y="838">sets_won</text>
+    <text class="fld"    x="330" y="858">sets_lost</text>
+    <text class="fld"    x="330" y="878">points_diff</text>
+  </g>
+
+  <!-- players -->
+  <g>
+    <rect class="tbl" x="620" y="700" width="220" height="144"/>
+    <rect class="hd" x="620" y="700" width="220" height="22"/>
+    <text class="ttl" x="730" y="716">players</text>
+    <line x1="620" y1="722" x2="840" y2="722" stroke="black"/>
+    <text class="fld pk" x="630" y="738">id</text>
+    <text class="fld"    x="630" y="758">code</text>
+    <text class="fld fk" x="630" y="778">club_id</text>
+    <text class="fld"    x="630" y="798">name</text>
+    <text class="fld"    x="630" y="818">gender</text>
+    <text class="fld"    x="630" y="838">rating</text>
+  </g>
+
+  <!-- ARROWS (child → parent). Labels offset perpendicular to line so they don't overlap. -->
+
+  <!-- referee_assignments.match_id → matches.id (vertical down) -->
+  <line class="ln" x1="400" y1="224" x2="400" y2="280" marker-end="url(#arr)"/>
+  <text class="lbl" x="410" y="238">n</text>
+  <text class="lbl" x="410" y="272">1</text>
+
+  <!-- referee_assignments.referee_id → referees.id (horizontal right) -->
+  <line class="ln" x1="560" y1="120" x2="620" y2="120" marker-end="url(#arr)"/>
+  <text class="lbl" x="566" y="110">n</text>
+  <text class="lbl" x="608" y="110">1</text>
+
+  <!-- matches.court_id → courts.id (diagonal up-left) -->
+  <line class="ln" x1="340" y1="280" x2="245" y2="190" marker-end="url(#arr)"/>
+  <text class="lbl" x="346" y="270">n</text>
+  <text class="lbl" x="252" y="206">1</text>
+
+  <!-- matches.event_id → events.id (horizontal right) -->
+  <line class="ln" x1="560" y1="360" x2="620" y2="360" marker-end="url(#arr)"/>
+  <text class="lbl" x="566" y="350">n</text>
+  <text class="lbl" x="608" y="350">1</text>
+
+  <!-- events.tournament_id → tournaments.id (horizontal right) -->
+  <line class="ln" x1="840" y1="380" x2="920" y2="380" marker-end="url(#arr)"/>
+  <text class="lbl" x="848" y="370">n</text>
+  <text class="lbl" x="908" y="370">1</text>
+
+  <!-- match_scores.match_id → matches.id (horizontal right) -->
+  <line class="ln" x1="280" y1="340" x2="320" y2="340" marker-end="url(#arr)"/>
+  <text class="lbl" x="284" y="330">n</text>
+  <text class="lbl" x="308" y="330">1</text>
+
+  <!-- match_scores.recorded_by → users.id (vertical down) -->
+  <line class="ln" x1="160" y1="564" x2="160" y2="700" marker-end="url(#arr)"/>
+  <text class="lbl" x="168" y="580">n</text>
+  <text class="lbl" x="168" y="694">1</text>
+
+  <!-- leaderboards.event_id → events.id (diagonal up-right) -->
+  <line class="ln" x1="500" y1="640" x2="700" y2="464" marker-end="url(#arr)"/>
+  <text class="lbl" x="486" y="634">n</text>
+  <text class="lbl" x="706" y="478">1</text>
+
+  <!-- leaderboards.tournament_id → tournaments.id (long diagonal up-right) -->
+  <line class="ln" x1="560" y1="700" x2="920" y2="478" marker-end="url(#arr)"/>
+  <text class="lbl" x="552" y="714">n</text>
+  <text class="lbl" x="905" y="494">1</text>
+
+  <!-- leaderboards.player_id → players.id (horizontal right) -->
+  <line class="ln" x1="560" y1="738" x2="620" y2="738" marker-end="url(#arr)"/>
+  <text class="lbl" x="566" y="728">n</text>
+  <text class="lbl" x="608" y="728">1</text>
+
+</svg>

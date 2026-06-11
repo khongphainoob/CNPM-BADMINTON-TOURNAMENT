@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1140 780" font-family="Arial, sans-serif" font-size="12">
+  <defs>
+    <marker id="arr" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="11" markerHeight="11" orient="auto-start-reverse">
+      <path d="M0,1 L11,6 L0,11" fill="none" stroke="#333" stroke-width="1.3"/>
+    </marker>
+  </defs>
+
+  <style>
+    .box  { fill:#ECECFB; stroke:#7B68EE; stroke-width:1.3; }
+    .sep  { stroke:#7B68EE; stroke-width:1; }
+    .ster { font-style:italic; fill:#555; text-anchor:middle; font-size:11px; }
+    .name { font-weight:bold; text-anchor:middle; }
+    .mem  { fill:#222; }
+    .rel  { stroke:#333; stroke-width:1.3; fill:none; }
+    .relD { stroke:#333; stroke-width:1.3; fill:none; stroke-dasharray:4 3; }
+    .lbl  { fill:#444; font-size:11px; }
+    .cap  { font-size:18px; font-weight:bold; text-anchor:middle; }
+    .col  { font-size:12px; font-weight:bold; fill:#7B68EE; text-anchor:middle; }
+  </style>
+
+  <!-- ============ MatchController ============ -->
+  <g>
+    <rect class="box" x="30" y="120" width="260" height="172" rx="3"/>
+    <line class="sep" x1="30" y1="160" x2="290" y2="160"/>
+    <line class="sep" x1="30" y1="174" x2="290" y2="174"/>
+    <text class="ster" x="160" y="137">«controller»</text>
+    <text class="name" x="160" y="154">MatchController</text>
+    <text class="mem" x="40" y="190">+createMatch(req) : Response</text>
+    <text class="mem" x="40" y="208">+assignReferee(req) : Response</text>
+    <text class="mem" x="40" y="226">+startMatch(req) : Response</text>
+    <text class="mem" x="40" y="244">+recordScore(req) : Response</text>
+    <text class="mem" x="40" y="262">+undoScore(req) : Response</text>
+    <text class="mem" x="40" y="280">+finishMatch(req) : Response</text>
+  </g>
+
+  <!-- ============ LeaderboardController ============ -->
+  <g>
+    <rect class="box" x="30" y="560" width="260" height="82" rx="3"/>
+    <line class="sep" x1="30" y1="600" x2="290" y2="600"/>
+    <line class="sep" x1="30" y1="614" x2="290" y2="614"/>
+    <text class="ster" x="160" y="577">«controller»</text>
+    <text class="name" x="160" y="594">LeaderboardController</text>
+    <text class="mem" x="40" y="630">+getLeaderboard(req) : Response</text>
+  </g>
+
+  <!-- ============ MatchService ============ -->
+  <g>
+    <rect class="box" x="360" y="90" width="300" height="136" rx="3"/>
+    <line class="sep" x1="360" y1="130" x2="660" y2="130"/>
+    <line class="sep" x1="360" y1="144" x2="660" y2="144"/>
+    <text class="ster" x="510" y="107">«service»</text>
+    <text class="name" x="510" y="124">MatchService</text>
+    <text class="mem" x="370" y="160">+createMatch(dto) : Match</text>
+    <text class="mem" x="370" y="178">+assignReferee(matchId, refId, role) : RefAssign</text>
+    <text class="mem" x="370" y="196">+start(matchId) : void</text>
+    <text class="mem" x="370" y="214">+finish(matchId, winnerSide) : void</text>
+  </g>
+
+  <!-- ============ ScoringService ============ -->
+  <g>
+    <rect class="box" x="360" y="285" width="300" height="150" rx="3"/>
+    <line class="sep" x1="360" y1="325" x2="660" y2="325"/>
+    <line class="sep" x1="360" y1="339" x2="660" y2="339"/>
+    <text class="ster" x="510" y="302">«service»</text>
+    <text class="name" x="510" y="319">ScoringService</text>
+    <text class="mem" x="370" y="372">+recordScore(matchId, side) : ScoreEvent</text>
+    <text class="mem" x="370" y="404">+undo(matchId) : void</text>
+  </g>
+
+  <!-- ============ LeaderboardService ============ -->
+  <g>
+    <rect class="box" x="360" y="560" width="300" height="100" rx="3"/>
+    <line class="sep" x1="360" y1="600" x2="660" y2="600"/>
+    <line class="sep" x1="360" y1="614" x2="660" y2="614"/>
+    <text class="ster" x="510" y="577">«service»</text>
+    <text class="name" x="510" y="594">LeaderboardService</text>
+    <text class="mem" x="370" y="630">+recompute(eventId) : void</text>
+    <text class="mem" x="370" y="648">+getLeaderboard(eventId) : List~Leaderboard~</text>
+  </g>
+
+  <!-- ============ IMatchRepository ============ -->
+  <g>
+    <rect class="box" x="760" y="40" width="350" height="118" rx="3"/>
+    <line class="sep" x1="760" y1="80" x2="1110" y2="80"/>
+    <line class="sep" x1="760" y1="94" x2="1110" y2="94"/>
+    <text class="ster" x="935" y="57">«interface»</text>
+    <text class="name" x="935" y="74">IMatchRepository</text>
+    <text class="mem" x="770" y="110">+findById(id) : Match</text>
+    <text class="mem" x="770" y="128">+save(match) : void</text>
+    <text class="mem" x="770" y="146">+updateStatus(id, status) : void</text>
+  </g>
+
+  <!-- ============ IScoreEventRepository ============ -->
+  <g>
+    <rect class="box" x="760" y="174" width="350" height="118" rx="3"/>
+    <line class="sep" x1="760" y1="214" x2="1110" y2="214"/>
+    <line class="sep" x1="760" y1="228" x2="1110" y2="228"/>
+    <text class="ster" x="935" y="191">«interface»</text>
+    <text class="name" x="935" y="208">IScoreEventRepository</text>
+    <text class="mem" x="770" y="244">+append(event) : ScoreEvent</text>
+    <text class="mem" x="770" y="262">+findLast(matchId) : ScoreEvent</text>
+    <text class="mem" x="770" y="280">+markUndone(id) : void</text>
+  </g>
+
+  <!-- ============ IMatchSetRepository ============ -->
+  <g>
+    <rect class="box" x="760" y="308" width="350" height="100" rx="3"/>
+    <line class="sep" x1="760" y1="348" x2="1110" y2="348"/>
+    <line class="sep" x1="760" y1="362" x2="1110" y2="362"/>
+    <text class="ster" x="935" y="325">«interface»</text>
+    <text class="name" x="935" y="342">IMatchSetRepository</text>
+    <text class="mem" x="770" y="378">+upsert(set) : void</text>
+    <text class="mem" x="770" y="396">+findByMatch(matchId) : List~MatchSet~</text>
+  </g>
+
+  <!-- ============ IRefereeAssignmentRepository ============ -->
+  <g>
+    <rect class="box" x="760" y="424" width="350" height="100" rx="3"/>
+    <line class="sep" x1="760" y1="464" x2="1110" y2="464"/>
+    <line class="sep" x1="760" y1="478" x2="1110" y2="478"/>
+    <text class="ster" x="935" y="441">«interface»</text>
+    <text class="name" x="935" y="458">IRefereeAssignmentRepository</text>
+    <text class="mem" x="770" y="494">+save(assignment) : void</text>
+    <text class="mem" x="770" y="512">+findByMatch(matchId) : List~RefAssign~</text>
+  </g>
+
+  <!-- ============ IEventRepository ============ -->
+  <g>
+    <rect class="box" x="760" y="540" width="350" height="82" rx="3"/>
+    <line class="sep" x1="760" y1="580" x2="1110" y2="580"/>
+    <line class="sep" x1="760" y1="594" x2="1110" y2="594"/>
+    <text class="ster" x="935" y="557">«interface»</text>
+    <text class="name" x="935" y="574">IEventRepository</text>
+    <text class="mem" x="770" y="610">+findById(id) : Event</text>
+  </g>
+
+  <!-- ============ ILeaderboardRepository ============ -->
+  <g>
+    <rect class="box" x="760" y="638" width="350" height="100" rx="3"/>
+    <line class="sep" x1="760" y1="678" x2="1110" y2="678"/>
+    <line class="sep" x1="760" y1="692" x2="1110" y2="692"/>
+    <text class="ster" x="935" y="655">«interface»</text>
+    <text class="name" x="935" y="672">ILeaderboardRepository</text>
+    <text class="mem" x="770" y="708">+upsert(row) : void</text>
+    <text class="mem" x="770" y="726">+findByEvent(eventId) : List~Leaderboard~</text>
+  </g>
+
+  <!-- ===================== RELATIONS ===================== -->
+
+  <!-- MatchController -> MatchService -->
+  <path class="rel" d="M290,175 C320,168 330,160 360,158" marker-end="url(#arr)"/>
+  <text class="lbl" x="300" y="160">calls</text>
+
+  <!-- MatchController -> ScoringService -->
+  <path class="rel" d="M290,255 C320,310 330,355 360,360" marker-end="url(#arr)"/>
+  <text class="lbl" x="298" y="322">calls</text>
+
+  <!-- LeaderboardController -> LeaderboardService -->
+  <path class="rel" d="M290,601 L360,608" marker-end="url(#arr)"/>
+  <text class="lbl" x="300" y="598">calls</text>
+
+  <!-- MatchService -> IMatchRepository -->
+  <path class="rel" d="M660,130 C700,115 720,105 760,99" marker-end="url(#arr)"/>
+
+  <!-- MatchService -> IRefereeAssignmentRepository -->
+  <path class="rel" d="M660,185 C705,300 715,420 760,470" marker-end="url(#arr)"/>
+
+  <!-- MatchService -> IEventRepository -->
+  <path class="rel" d="M660,205 C700,360 715,520 760,575" marker-end="url(#arr)"/>
+
+  <!-- ScoringService -> IScoreEventRepository -->
+  <path class="rel" d="M660,345 C700,300 720,260 760,235" marker-end="url(#arr)"/>
+
+  <!-- ScoringService -> IMatchSetRepository -->
+  <path class="rel" d="M660,390 C700,375 720,360 760,358" marker-end="url(#arr)"/>
+
+  <!-- LeaderboardService -> ILeaderboardRepository -->
+  <path class="rel" d="M660,615 C700,650 720,675 760,688" marker-end="url(#arr)"/>
+
+  <!-- MatchService ..> LeaderboardService : on finish (đi vòng trái, tránh ScoringService) -->
+  <path class="relD" d="M390,222 C345,232 322,250 322,285 L322,575 C322,590 336,598 360,600" marker-end="url(#arr)"/>
+  <text class="lbl" x="150" y="500">on finish → recompute</text>
+
+</svg>

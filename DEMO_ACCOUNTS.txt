@@ -1,0 +1,30 @@
+TÀI KHOẢN DEMO — Giải Cầu Lông (ShuttleOps)
+=============================================
+Mỗi tài khoản ứng với một giao diện (view) theo vai trò.
+Đăng nhập bằng email + mật khẩu.
+
+1. Admin (Quản trị hệ thống)
+   Email   : admin@shuttleops.vn
+   Mật khẩu: admin123
+
+2. BTC (Ban tổ chức)
+   Email   : phamlam@shuttleops.vn
+   Mật khẩu: btc123
+
+3. Trọng tài (Referee)
+   Email   : lequanghuy@shuttleops.vn
+   Mật khẩu: ref123
+
+4. Vận động viên (Athlete)
+   Email   : nguyenhaidang@shuttleops.vn
+   Mật khẩu: vdv123
+
+5. Khán giả (Spectator)
+   Email   : khangia@shuttleops.vn
+   Mật khẩu: fan123
+
+---------------------------------------------
+Tài khoản phụ (không bắt buộc cho demo 5 view):
+- Huấn luyện viên (Coach): truongdoan@shuttleops.vn / (đặt lại mật khẩu nếu cần)
+- 2 tài khoản chờ duyệt (pending) để demo luồng admin duyệt:
+  tranvanminh@example.com, lethilan@example.com

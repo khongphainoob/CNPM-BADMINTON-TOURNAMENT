@@ -53,6 +53,12 @@ export default function SyncLogView() {
           await competitionApi.startMatch(item.matchId)
         } else if (item.type === 'SCORE') {
           await competitionApi.addScoreEvent(item.matchId, item.payload)
+        } else if (item.type === 'SET') {
+          await competitionApi.addSetScore(item.matchId, item.payload)
+        } else if (item.type === 'COMPLETE') {
+          await competitionApi.completeMatch(item.matchId)
+        } else if (item.type === 'RESULT') {
+          await competitionApi.setResult(item.matchId, item.payload)
         } else if (item.type === 'UNDO') {
           await competitionApi.undoScore(item.matchId)
         }

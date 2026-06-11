@@ -21,7 +21,6 @@ import {
 import RefereeApp from './components/referee/RefereeApp'
 // Standard Views
 import LiveMatchesView from './components/user/LiveMatchesView'
-import TournamentExplorer from './components/user/TournamentExplorer'
 import UserProfileView from './components/user/UserProfileView'
 import MyScheduleView from './components/user/MyScheduleView'
 // Athlete Views
@@ -31,6 +30,9 @@ import TeamDashboardView from './features/registration/TeamDashboardView'
 // Admin Views
 import SystemOverviewView from './features/admin/SystemOverviewView'
 import NotificationView from './features/notification/NotificationView'
+
+// Spectator (full-screen public site — its own shell)
+import SpectatorView from './components/spectator/SpectatorView'
 
 // Shared Views
 import { ErrorBoundary } from './components/shared/ErrorBoundary'
@@ -140,6 +142,15 @@ export default function App() {
     return <AuthScreen onLogin={login} onRegister={register} />
   }
 
+  // Spectator gets the full-screen public site (its own nav/hero/footer), not the RBAC shell.
+  if (session.role === 'spectator') {
+    return (
+      <ErrorBoundary>
+        <SpectatorView onLogout={logout} />
+      </ErrorBoundary>
+    )
+  }
+
   // --- Unified Layout Selection Logic ---
   let items: NavItem[] = GLOBAL_NAV.filter(item => {
     if (item.roles && !item.roles.includes(session.role)) return false
@@ -194,10 +205,10 @@ export default function App() {
         <Route path="/users" element={<ProtectedRoute allowed={['admin']}><UsersView /></ProtectedRoute>} />
         <Route path="/config" element={<ProtectedRoute allowed={['admin']}><SystemConfigView /></ProtectedRoute>} />
 
-        {/* Shared Tournaments Route (Admin, BTC, Referee, Spectator) */}
+        {/* Shared Tournaments Route (Admin, BTC, Referee — spectators use the public site) */}
         <Route path="/tournaments" element={
-          <ProtectedRoute allowed={['admin', 'btc', 'referee', 'spectator']}>
-            {session.role === 'spectator' ? <TournamentExplorer /> : <TournamentHub />}
+          <ProtectedRoute allowed={['admin', 'btc', 'referee']}>
+            <TournamentHub />
           </ProtectedRoute>
         } />
 

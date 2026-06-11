@@ -1,176 +1,79 @@
-import type { MatchState, MatchAction } from '../../types'
+import type { MatchState, SideId } from '../../types'
 
-type Props = { state: MatchState; dispatch: React.Dispatch<MatchAction>; onBack?: () => void; onLogout?: () => void }
+type Props = { state: MatchState; onBack?: () => void; onLogout?: () => void }
 
-export default function MatchEndScreen({ state, dispatch, onBack, onLogout }: Props) {
-  const winner: 'p1' | 'p2' = state.setsWon.p1 > state.setsWon.p2 ? 'p1' : 'p2'
-  const loser:  'p1' | 'p2' = winner === 'p1' ? 'p2' : 'p1'
-  const winnerName = state[winner].name
-  const loserName  = state[loser].name
+const RESULT_LABEL: Record<string, string> = {
+  normal: '',
+  walkover: 'Walkover · đối thủ vắng mặt',
+  disqualification: 'Truất quyền thi đấu',
+}
+
+export default function MatchEndScreen({ state, onBack, onLogout }: Props) {
+  const winner: SideId = state.result?.winner ?? (state.gamesWon.A >= state.gamesWon.B ? 'A' : 'B')
+  const nameOf = (s: SideId) => state.sides[s].players.map(p => p.name).join(' / ')
+  const winnerName = nameOf(winner)
+  const resultType = state.result?.type ?? 'normal'
+  const abnormal = resultType !== 'normal'
 
   return (
     <div className="fade-in" style={{
-      height: '100dvh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      background: 'var(--color-ink)',
-      color: 'white',
-      padding: '48px 24px',
-      paddingBottom: 'max(40px, env(safe-area-inset-bottom))',
-      textAlign: 'center',
+      height: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
+      background: 'var(--color-ink)', color: 'white', padding: '48px 24px',
+      paddingBottom: 'max(40px, env(safe-area-inset-bottom))', textAlign: 'center',
     }}>
-      {/* Top label */}
-      <div style={{
-        fontFamily: 'var(--font-display)',
-        fontWeight: 700,
-        fontSize: 11,
-        letterSpacing: '0.18em',
-        textTransform: 'uppercase',
-        opacity: 0.4,
-      }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.4 }}>
         Kết thúc trận đấu · {state.tournament}
       </div>
 
-      {/* Winner block */}
       <div>
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.45, marginBottom: 18 }}>
           Người thắng
         </div>
-
-        <div style={{
-          fontFamily: 'var(--font-display)',
-          fontWeight: 900,
-          fontSize: 'clamp(26px, 7.5vw, 46px)',
-          color: 'var(--color-accent)',
-          lineHeight: 1.1,
-          marginBottom: 6,
-          maxWidth: '88vw',
-          margin: '0 auto 6px',
-        }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 'clamp(26px, 7.5vw, 46px)', color: 'var(--color-accent)', lineHeight: 1.1, margin: '0 auto 6px', maxWidth: '88vw' }}>
           {winnerName}
         </div>
 
-        <div style={{ fontSize: 14, opacity: 0.45, marginBottom: 36 }}>
-          {state.setsWon.p1} – {state.setsWon.p2} ván
-        </div>
+        {abnormal ? (
+          <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 24, color: 'var(--color-amber)' }}>
+            {RESULT_LABEL[resultType]}
+            {state.result?.note ? ` · ${state.result.note}` : ''}
+          </div>
+        ) : (
+          <div style={{ fontSize: 14, opacity: 0.45, marginBottom: 36 }}>{state.gamesWon.A} – {state.gamesWon.B} ván</div>
+        )}
 
-        {/* Set breakdown */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
-          {state.completedSets.map((s, i) => {
-            const p1Won = s.winner === 'p1'
-            return (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 14 }}>
-                <span style={{
-                  fontWeight: 700,
-                  opacity: winner === 'p1' ? 1 : 0.38,
-                  minWidth: 100,
-                  textAlign: 'right',
-                  fontSize: 13,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {p1Won ? winnerName : loserName}
-                </span>
-
-                <span style={{
-                  fontFamily: 'var(--font-display)',
-                  fontWeight: 800,
-                  fontSize: 20,
-                  opacity: 0.9,
-                  minWidth: 64,
-                }}>
-                  {s.p1}–{s.p2}
-                </span>
-
-                <span style={{
-                  fontWeight: 700,
-                  opacity: winner === 'p2' ? 1 : 0.38,
-                  minWidth: 100,
-                  textAlign: 'left',
-                  fontSize: 13,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {p1Won ? loserName : winnerName}
-                </span>
-              </div>
-            )
-          })}
-        </div>
+        {!abnormal && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+            {state.completedGames.map((g, i) => {
+              const aIsWinner = winner === 'A'
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 14 }}>
+                  <span style={{ fontWeight: 700, opacity: aIsWinner ? 1 : 0.38, minWidth: 110, textAlign: 'right', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {nameOf('A')}
+                  </span>
+                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, opacity: 0.9, minWidth: 64 }}>{g.A}–{g.B}</span>
+                  <span style={{ fontWeight: 700, opacity: !aIsWinner ? 1 : 0.38, minWidth: 110, textAlign: 'left', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {nameOf('B')}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Actions */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
-        <button style={{
-          padding: '17px',
-          background: 'var(--color-accent)',
-          color: 'white',
-          border: 'none',
-          borderRadius: 13,
-          fontFamily: 'var(--font-body)',
-          fontWeight: 700,
-          fontSize: 16,
-          cursor: 'pointer',
-        }}>
-          Nộp kết quả
-        </button>
+        <div style={{ fontSize: 12, opacity: 0.5 }}>Kết quả đã được lưu lên hệ thống.</div>
         {onBack && (
-          <button
-            onClick={onBack}
-            style={{
-              padding: '13px',
-              background: 'none',
-              color: 'oklch(0.55 0.01 50)',
-              border: '1px solid oklch(0.28 0.01 50)',
-              borderRadius: 13,
-              fontFamily: 'var(--font-body)',
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: 'pointer',
-            }}
-          >
-            ← Bảng điểm khán giả
+          <button onClick={onBack} style={{ padding: '15px', background: 'var(--color-accent)', color: 'white', border: 'none', borderRadius: 13, fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>
+            ← Về danh sách trận
           </button>
         )}
         {onLogout && (
-          <button
-            onClick={onLogout}
-            style={{
-              padding: '11px',
-              background: 'none',
-              color: 'oklch(0.45 0.01 50)',
-              border: 'none',
-              fontFamily: 'var(--font-body)',
-              fontWeight: 500,
-              fontSize: 13,
-              cursor: 'pointer',
-              opacity: 0.6,
-            }}
-          >
+          <button onClick={onLogout} style={{ padding: '11px', background: 'none', color: 'oklch(0.55 0.01 50)', border: 'none', fontFamily: 'var(--font-body)', fontWeight: 500, fontSize: 13, cursor: 'pointer', opacity: 0.7 }}>
             Đăng xuất
           </button>
         )}
-
-        <button
-          onClick={() => dispatch({ type: 'RESET' })}
-          style={{
-            padding: '15px',
-            background: 'none',
-            color: 'oklch(0.78 0.01 50)',
-            border: '1px solid oklch(0.32 0.01 50)',
-            borderRadius: 13,
-            fontFamily: 'var(--font-body)',
-            fontWeight: 600,
-            fontSize: 15,
-            cursor: 'pointer',
-          }}
-        >
-          Trận mới
-        </button>
       </div>
     </div>
   )

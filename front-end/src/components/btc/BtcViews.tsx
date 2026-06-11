@@ -863,7 +863,10 @@ export function NewsView() {
 
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {addNewsOpen && <ArticleEditor onClose={() => setAddNewsOpen(false)} onSave={(data) => { console.log(data); setAddNewsOpen(false); }} />}
+      {addNewsOpen && <ArticleEditor onClose={() => setAddNewsOpen(false)} onSave={(data) => {
+        addNewsItem({ title: data.title, ts: new Date().toLocaleDateString('vi-VN'), tag: data.tags?.[0] || 'Tin tức' })
+        setAddNewsOpen(false)
+      }} />}
 
       <div style={{ display: 'flex', alignItems: 'flex-end' }}>
         <div>
