@@ -1,11 +1,65 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Icon from '../../components/shared/Icon'
 import { btnPrimary } from '../../components/shared/tokens'
+import { configApi } from '../../data/api'
+import { useToast } from '../../components/shared/Toast'
 
 type ConfigTab = 'general' | 'security' | 'integrations'
 
 export default function SystemConfigView() {
   const [tab, setTab] = useState<ConfigTab>('general')
+  const { toast } = useToast()
+  
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  
+  const [configs, setConfigs] = useState<any>({
+    system_name: 'ShuttleOps Platform',
+    timezone: 'Asia/Ho_Chi_Minh (UTC+7)',
+    maintenance_mode: 'false',
+    password_policy: 'strong',
+    jwt_expiration_hours: '24',
+    vnpay_tmncode: '',
+    vnpay_hashsecret: '',
+    vnpay_environment: 'Sandbox (Thử nghiệm)',
+    sms_provider: 'Twilio',
+    sms_apikey: ''
+  })
+
+  useEffect(() => {
+    configApi.get()
+      .then(data => {
+        if (data) {
+          setConfigs(prev => ({ ...prev, ...data }))
+        }
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('Failed to load configs', err)
+        setLoading(false)
+      })
+  }, [])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await configApi.update(configs)
+      toast('Đã lưu cấu hình hệ thống thành công!', 'success')
+    } catch (err: any) {
+      console.error(err)
+      toast(err.response?.data?.error?.message || 'Lỗi khi lưu cấu hình', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ padding: '40px 48px', color: 'var(--ink-2)' }}>
+        Đang tải cấu hình hệ thống...
+      </div>
+    )
+  }
 
   return (
     <div style={{ padding: '40px 48px', maxWidth: 1000, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
@@ -18,7 +72,9 @@ export default function SystemConfigView() {
             Cấu hình các tham số toàn cục và tích hợp API
           </div>
         </div>
-        <button style={btnPrimary}>Lưu thay đổi</button>
+        <button style={btnPrimary} onClick={handleSave} disabled={saving}>
+          {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+        </button>
       </div>
 
       <div style={{ display: 'flex', gap: 32 }}>
@@ -42,18 +98,18 @@ export default function SystemConfigView() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Tên hệ thống</label>
-                  <input type="text" defaultValue="ShuttleOps Platform" style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--line)', borderRadius: 6, fontSize: 14 }} />
+                  <input type="text" value={configs.system_name || ''} onChange={e => setConfigs({ ...configs, system_name: e.target.value })} style={inputStyle} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Múi giờ mặc định</label>
-                  <select style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--line)', borderRadius: 6, fontSize: 14 }}>
-                    <option>Asia/Ho_Chi_Minh (UTC+7)</option>
-                    <option>UTC</option>
+                  <select value={configs.timezone || ''} onChange={e => setConfigs({ ...configs, timezone: e.target.value })} style={inputStyle}>
+                    <option value="Asia/Ho_Chi_Minh (UTC+7)">Asia/Ho_Chi_Minh (UTC+7)</option>
+                    <option value="UTC">UTC</option>
                   </select>
                 </div>
                 <div>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                    <input type="checkbox" style={{ width: 18, height: 18 }} />
+                    <input type="checkbox" checked={configs.maintenance_mode === 'true'} onChange={e => setConfigs({ ...configs, maintenance_mode: e.target.checked ? 'true' : 'false' })} style={{ width: 18, height: 18 }} />
                     <span style={{ fontSize: 14, fontWeight: 500 }}>Chế độ bảo trì (Bảo vệ toàn hệ thống)</span>
                   </label>
                   <p style={{ margin: '4px 0 0 28px', fontSize: 12, color: 'var(--ink-3)' }}>Chỉ Admin mới có thể đăng nhập khi chế độ này được bật.</p>
@@ -70,14 +126,14 @@ export default function SystemConfigView() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Yêu cầu mật khẩu mạnh</label>
-                  <select style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--line)', borderRadius: 6, fontSize: 14 }}>
-                    <option>Có (Tối thiểu 8 ký tự, 1 chữ hoa, 1 số)</option>
-                    <option>Không (Tối thiểu 6 ký tự)</option>
+                  <select value={configs.password_policy || ''} onChange={e => setConfigs({ ...configs, password_policy: e.target.value })} style={inputStyle}>
+                    <option value="strong">Có (Tối thiểu 8 ký tự, 1 chữ hoa, 1 số)</option>
+                    <option value="weak">Không (Tối thiểu 6 ký tự)</option>
                   </select>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Thời hạn JWT Token (Giờ)</label>
-                  <input type="number" defaultValue={24} style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--line)', borderRadius: 6, fontSize: 14 }} />
+                  <input type="number" value={configs.jwt_expiration_hours || ''} onChange={e => setConfigs({ ...configs, jwt_expiration_hours: e.target.value })} style={inputStyle} />
                 </div>
               </div>
             </div>
@@ -94,17 +150,17 @@ export default function SystemConfigView() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>TmnCode (Terminal ID)</label>
-                    <input type="text" placeholder="Nhập mã Terminal VNPay..." style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--line)', borderRadius: 6, fontSize: 14, fontFamily: 'monospace' }} />
+                    <input type="text" value={configs.vnpay_tmncode || ''} onChange={e => setConfigs({ ...configs, vnpay_tmncode: e.target.value })} placeholder="Nhập mã Terminal VNPay..." style={{ ...inputStyle, fontFamily: 'monospace' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>HashSecret</label>
-                    <input type="password" placeholder="Nhập Secret Key..." style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--line)', borderRadius: 6, fontSize: 14, fontFamily: 'monospace' }} />
+                    <input type="password" value={configs.vnpay_hashsecret || ''} onChange={e => setConfigs({ ...configs, vnpay_hashsecret: e.target.value })} placeholder="Nhập Secret Key..." style={{ ...inputStyle, fontFamily: 'monospace' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Môi trường</label>
-                    <select style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--line)', borderRadius: 6, fontSize: 14 }}>
-                      <option>Sandbox (Thử nghiệm)</option>
-                      <option>Production (Thực tế)</option>
+                    <select value={configs.vnpay_environment || ''} onChange={e => setConfigs({ ...configs, vnpay_environment: e.target.value })} style={inputStyle}>
+                      <option value="Sandbox (Thử nghiệm)">Sandbox (Thử nghiệm)</option>
+                      <option value="Production (Thực tế)">Production (Thực tế)</option>
                     </select>
                   </div>
                 </div>
@@ -119,14 +175,14 @@ export default function SystemConfigView() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Nhà cung cấp</label>
-                    <select style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--line)', borderRadius: 6, fontSize: 14 }}>
-                      <option>Twilio</option>
-                      <option>SpeedSMS</option>
+                    <select value={configs.sms_provider || ''} onChange={e => setConfigs({ ...configs, sms_provider: e.target.value })} style={inputStyle}>
+                      <option value="Twilio">Twilio</option>
+                      <option value="SpeedSMS">SpeedSMS</option>
                     </select>
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>API Key / Auth Token</label>
-                    <input type="password" placeholder="Nhập API Key..." style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--line)', borderRadius: 6, fontSize: 14, fontFamily: 'monospace' }} />
+                    <input type="password" value={configs.sms_apikey || ''} onChange={e => setConfigs({ ...configs, sms_apikey: e.target.value })} placeholder="Nhập API Key..." style={{ ...inputStyle, fontFamily: 'monospace' }} />
                   </div>
                 </div>
               </div>
@@ -138,6 +194,11 @@ export default function SystemConfigView() {
   )
 }
 
+const inputStyle: React.CSSProperties = {
+  width: '100%', padding: '10px 14px', border: '1px solid var(--line)',
+  borderRadius: 6, fontSize: 14, background: 'var(--paper)', color: 'var(--ink)'
+}
+
 function ConfigTabButton({ label, icon, active, onClick }: { id: string; label: string; icon: string; active: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick} style={{
@@ -145,6 +206,7 @@ function ConfigTabButton({ label, icon, active, onClick }: { id: string; label: 
       background: active ? 'var(--ink)' : 'transparent',
       color: active ? 'white' : 'var(--ink-2)',
       border: 'none', borderRadius: 8, cursor: 'pointer',
+      width: '100%',
       fontSize: 14, fontWeight: active ? 600 : 500,
       transition: 'background 0.2s', textAlign: 'left'
     }}>

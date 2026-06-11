@@ -80,7 +80,7 @@ export default function SystemOverviewView() {
         {/* Welcome Section */}
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--ink)', marginBottom: 8 }}>
-            Chào mừng trở lại, {session?.displayName || 
+            Chào mừng trở lại, {session?.name || 
               (session?.role === 'btc' ? 'Ban tổ chức' : 
                session?.role === 'admin' ? 'Quản trị viên' : 
                session?.role === 'referee' ? 'Trọng tài' : 'Khán giả')}!
@@ -192,8 +192,8 @@ export default function SystemOverviewView() {
             {upcomingTournaments.length === 0 ? (
               <div style={{ color: 'var(--ink-3)', fontSize: 14, fontStyle: 'italic' }}>Không có giải đấu sắp tới.</div>
             ) : (
-              upcomingTournaments.map(t => (
-                <div key={t.id} style={{ display: 'flex', gap: 12, borderBottom: '1px solid var(--line)', paddingBottom: 16, lastChild: { borderBottom: 'none' } }}>
+              upcomingTournaments.map((t, idx) => (
+                <div key={t.id} style={{ display: 'flex', gap: 12, borderBottom: idx === upcomingTournaments.length - 1 ? 'none' : '1px solid var(--line)', paddingBottom: idx === upcomingTournaments.length - 1 ? 0 : 16 }}>
                   <div style={{ 
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     minWidth: 50, background: 'var(--paper-2)', borderRadius: 8, padding: '8px 4px', border: '1px solid var(--line)'

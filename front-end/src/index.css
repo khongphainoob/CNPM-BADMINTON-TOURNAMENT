@@ -2,9 +2,10 @@
 
 @theme {
   /* Fonts — matches the legacy demo UI */
-  --font-display: 'Barlow Condensed', system-ui, sans-serif;
-  --font-body:    'Figtree', system-ui, sans-serif;
+  --font-display: 'Montserrat', system-ui, sans-serif;
+  --font-body:    'Be Vietnam Pro', system-ui, sans-serif;
   --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  --font-serif:   'Montserrat', system-ui, sans-serif;
 
   /* Warm parchment surfaces (hue 90) */
   --color-surface:        oklch(0.985 0.005 90);

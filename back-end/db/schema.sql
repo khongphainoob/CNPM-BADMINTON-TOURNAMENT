@@ -248,6 +248,8 @@ CREATE TABLE matches (
   ended_at        TIMESTAMPTZ,
   status          match_status_t NOT NULL DEFAULT 'upcoming',
   winner_side     side_t,
+  next_match_id   BIGINT REFERENCES matches(id) ON DELETE SET NULL,
+  next_match_side side_t,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   deleted_at      TIMESTAMPTZ,

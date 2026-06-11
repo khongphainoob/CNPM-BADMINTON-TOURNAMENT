@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import Icon from '../../components/shared/Icon'
 import { CATEGORIES } from '../../data/constants'
 import { reportingApi } from '../../data/api'
 

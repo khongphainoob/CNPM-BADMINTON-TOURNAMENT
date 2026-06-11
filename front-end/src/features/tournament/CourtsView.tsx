@@ -163,8 +163,7 @@ export function CourtsView() {
       </div>
 
       {modalOpen && (
-        <Modal onClose={() => setModalOpen(false)}>
-          <h2 style={{ margin: '0 0 16px', fontSize: 18 }}>{editingCourt ? 'Sửa thông tin sân' : 'Thêm sân thi đấu'}</h2>
+        <Modal title={editingCourt ? 'Sửa thông tin sân' : 'Thêm sân thi đấu'} onClose={() => setModalOpen(false)}>
           
           <div style={{ marginBottom: 12 }}>
             <label className="caps" style={{ display: 'block', marginBottom: 6 }}>Tên sân/Ký hiệu</label>

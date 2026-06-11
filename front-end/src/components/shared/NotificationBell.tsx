@@ -38,7 +38,7 @@ export default function NotificationBell() {
         await participationApi.rejectPartner(meta.participantId)
         toast('Đã từ chối lời mời')
       }
-      await notificationApi.markRead(n.id)
+      await notificationApi.markAsRead(n.id)
       fetchNotifs()
       setOpen(false)
     } catch (err: any) {

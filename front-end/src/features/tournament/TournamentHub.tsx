@@ -131,8 +131,8 @@ export default function TournamentHub() {
               onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'none'}
             >
-              <div style={{ height: 100, background: 'oklch(0.96 0.01 260)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.1 }}>
-                <Icon name="award" size={40} />
+              <div style={{ height: 100, background: 'oklch(0.96 0.01 260)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="award" size={40} style={{ opacity: 0.4 }} />
               </div>
               <div style={{ padding: 20 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>

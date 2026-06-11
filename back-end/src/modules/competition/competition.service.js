@@ -1,5 +1,6 @@
 import { query, getClient } from '../../config/db.js';
 import { AppError } from '../../middleware/error.js';
+import { broadcastScoreUpdate } from '../../config/socket.js';
 
 export async function listMatches({ eventId, tournamentId, status, courtId, refereeId, playerId, page = 1, limit = 50 } = {}) {
   const conditions = ['m.deleted_at IS NULL'];
@@ -37,7 +38,7 @@ export async function listMatches({ eventId, tournamentId, status, courtId, refe
   const [matchesResult, countResult] = await Promise.all([
     query(
       `SELECT m.id, m.code, m.round, m.scheduled_at, m.started_at, m.ended_at,
-              m.status, m.winner_side,
+              m.status, m.winner_side, m.next_match_id, m.next_match_side,
               e.id AS event_id, e.label AS event_label, e.category_code,
               t.id AS tournament_id, t.name AS tournament_name,
               c.id AS court_id, c.label AS court_label,
@@ -108,6 +109,7 @@ export async function getMatchById(id) {
   const matchResult = await query(
     `SELECT m.id, m.code, m.event_id, m.round, m.court_id, m.referee_id,
             m.scheduled_at, m.started_at, m.ended_at, m.status, m.winner_side,
+            m.next_match_id, m.next_match_side,
             e.category_code, e.max_sets, e.points_per_set
        FROM matches m
        JOIN events e ON e.id = m.event_id
@@ -210,11 +212,64 @@ export async function completeMatch(id) {
   if (setsWonA >= setsToWin) winnerSide = 'A';
   else if (setsWonB >= setsToWin) winnerSide = 'B';
 
-  const result = await query(
-    `UPDATE matches SET status = 'completed', ended_at = now(), winner_side = $1 WHERE id = $2 RETURNING *`,
-    [winnerSide, id]
+  const client = await getClient();
+  let completedMatch;
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      `UPDATE matches SET status = 'completed', ended_at = now(), winner_side = $1 WHERE id = $2 RETURNING *`,
+      [winnerSide, id]
+    );
+    completedMatch = result.rows[0];
+
+    if (completedMatch && winnerSide) {
+      await advanceWinner(client, id, winnerSide);
+    }
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('Lỗi khi tự động tiến cử người thắng:', e);
+    throw e;
+  } finally {
+    client.release();
+  }
+
+  return completedMatch;
+}
+
+export async function advanceWinner(client, matchId, winnerSide) {
+  // 1. Fetch match next link details
+  const matchRes = await client.query(
+    `SELECT next_match_id, next_match_side FROM matches WHERE id = $1`,
+    [matchId]
   );
-  return result.rows[0];
+  const match = matchRes.rows[0];
+  if (!match || !match.next_match_id) return;
+
+  const nextMatchId = match.next_match_id;
+  const nextMatchSide = match.next_match_side;
+
+  // 2. Fetch the winning participants from the current match
+  const winnerPartsRes = await client.query(
+    `SELECT player_id, seed FROM match_participants WHERE match_id = $1 AND side = $2`,
+    [matchId, winnerSide]
+  );
+  const winningPlayers = winnerPartsRes.rows;
+  if (winningPlayers.length === 0) return;
+
+  // 3. Delete any existing participants on nextMatchSide of nextMatchId (to clean up if score was modified)
+  await client.query(
+    `DELETE FROM match_participants WHERE match_id = $1 AND side = $2`,
+    [nextMatchId, nextMatchSide]
+  );
+
+  // 4. Insert winning players into next match
+  for (const wp of winningPlayers) {
+    await client.query(
+      `INSERT INTO match_participants (match_id, side, player_id, seed) VALUES ($1, $2, $3, $4)`,
+      [nextMatchId, nextMatchSide, wp.player_id, wp.seed]
+    );
+  }
 }
 
 export async function addMatchParticipant(matchId, { side, playerId, seed }) {
@@ -249,7 +304,9 @@ export async function addSetScore(matchId, { setNo, scoreA, scoreB }) {
     [matchId, setNo, scoreA, scoreB, winner]
   );
 
-  return result.rows[0];
+  const resRow = result.rows[0];
+  broadcastScoreUpdate(matchId, { type: 'set-score', ...resRow });
+  return resRow;
 }
 
 export async function addScoreEvent(matchId, { setNo, scorer, prevScoreA, prevScoreB, prevServing, causedSetEnd }) {
@@ -259,7 +316,9 @@ export async function addScoreEvent(matchId, { setNo, scorer, prevScoreA, prevSc
      RETURNING *`,
     [matchId, setNo, scorer, prevScoreA || 0, prevScoreB || 0, prevServing || 'A', causedSetEnd || false]
   );
-  return result.rows[0];
+  const resRow = result.rows[0];
+  broadcastScoreUpdate(matchId, { type: 'score-event', ...resRow });
+  return resRow;
 }
 
 export async function listScoreEvents(matchId) {
@@ -279,6 +338,7 @@ export async function undoLastScore(matchId) {
   if (!lastEvent.rows[0]) throw new AppError(400, 'Không có điểm nào để undo', 'NO_SCORE_TO_UNDO');
 
   await query(`DELETE FROM score_events WHERE id = $1`, [lastEvent.rows[0].id]);
+  broadcastScoreUpdate(matchId, { type: 'undo' });
   return true;
 }
 
@@ -303,15 +363,14 @@ export async function generateRandomDraw(eventId) {
   // 2. Bracket size must be next power of 2
   const bracketSize = nextPowerOf2(playerCount);
   const numByes = bracketSize - playerCount;
+  const totalRounds = Math.log2(bracketSize);
 
-  // Let's name the round dynamically based on the bracket size
-  let roundName = 'Vòng Bảng';
-  if (bracketSize === 2) roundName = 'Chung kết';
-  else if (bracketSize === 4) roundName = 'Bán kết';
-  else if (bracketSize === 8) roundName = 'Tứ kết';
-  else if (bracketSize === 16) roundName = 'Vòng 16';
-  else if (bracketSize === 32) roundName = 'Vòng 32';
-  else if (bracketSize === 64) roundName = 'Vòng 64';
+  function getRoundName(roundIndex, total) {
+    if (roundIndex === total) return 'Chung kết';
+    if (roundIndex === total - 1) return 'Bán kết';
+    if (roundIndex === total - 2) return 'Tứ kết';
+    return `Vòng ${Math.pow(2, total - roundIndex + 1)}`;
+  }
 
   // 3. Separate seeded players and unseeded players
   const seeded = participants.filter(p => p.seed !== null);
@@ -366,71 +425,102 @@ export async function generateRandomDraw(eventId) {
     await client.query('BEGIN');
     await client.query(`DELETE FROM matches WHERE event_id = $1`, [eventId]);
 
-    let matchCount = 0;
-    for (let i = 0; i < bracketSize; i += 2) {
-      const playerA = slots[i];
-      const playerB = slots[i + 1];
+    // Keep track of created match IDs in each round: { `${roundIndex}-${matchIndex}`: matchId }
+    const createdMatchIds = {};
+    let totalMatchesCreated = 0;
 
-      if (playerA === 'BYE' && playerB === 'BYE') {
-        continue;
-      }
+    // Create matches round-by-round from final (totalRounds) down to Round 1
+    for (let r = totalRounds; r >= 1; r--) {
+      const roundName = getRoundName(r, totalRounds);
+      const matchesInRound = Math.pow(2, totalRounds - r);
 
-      const isByeA = playerA === 'BYE' || playerA === null;
-      const isByeB = playerB === 'BYE' || playerB === null;
+      for (let i = 0; i < matchesInRound; i++) {
+        let nextMatchId = null;
+        let nextMatchSide = null;
 
-      let status = 'upcoming';
-      let winnerSide = null;
-      let endedAt = null;
-
-      if (isByeA) {
-        status = 'completed'; // Mark as completed to easily advance in tournament
-        winnerSide = 'B';
-        endedAt = 'now()';
-      } else if (isByeB) {
-        status = 'completed';
-        winnerSide = 'A';
-        endedAt = 'now()';
-      }
-
-      const matchRes = await client.query(
-        `INSERT INTO matches (event_id, round, status, winner_side, ended_at, code) 
-         VALUES ($1, $2, $3, $4, ${endedAt ? 'now()' : 'NULL'}, $5) 
-         RETURNING id`,
-        [eventId, roundName, status, winnerSide, `M-${eventId}-${matchCount + 1}`]
-      );
-      const matchId = matchRes.rows[0].id;
-      matchCount++;
-
-      // Insert participants
-      if (!isByeA) {
-        await client.query(
-          `INSERT INTO match_participants (match_id, side, player_id, seed) VALUES ($1, 'A', $2, $3)`,
-          [matchId, playerA.player_id, playerA.seed]
-        );
-        if (playerA.partner_id) {
-          await client.query(
-            `INSERT INTO match_participants (match_id, side, player_id, seed) VALUES ($1, 'A', $2, $3)`,
-            [matchId, playerA.partner_id, playerA.seed]
-          );
+        // If not the final round, link to the next match
+        if (r < totalRounds) {
+          const nextMatchIndex = Math.floor(i / 2);
+          nextMatchId = createdMatchIds[`${r + 1}-${nextMatchIndex}`] || null;
+          nextMatchSide = i % 2 === 0 ? 'A' : 'B';
         }
-      }
 
-      if (!isByeB) {
-        await client.query(
-          `INSERT INTO match_participants (match_id, side, player_id, seed) VALUES ($1, 'B', $2, $3)`,
-          [matchId, playerB.player_id, playerB.seed]
+        let status = 'upcoming';
+        let winnerSide = null;
+        let endedAt = null;
+
+        // If it's the first round, check if any BYEs make it completed
+        if (r === 1) {
+          const playerA = slots[i * 2];
+          const playerB = slots[i * 2 + 1];
+          const isByeA = playerA === 'BYE' || playerA === null;
+          const isByeB = playerB === 'BYE' || playerB === null;
+
+          if (isByeA) {
+            status = 'completed';
+            winnerSide = 'B';
+            endedAt = 'now()';
+          } else if (isByeB) {
+            status = 'completed';
+            winnerSide = 'A';
+            endedAt = 'now()';
+          }
+        }
+
+        const matchCode = `M-${eventId}-${r}-${i + 1}`;
+        const matchRes = await client.query(
+          `INSERT INTO matches (event_id, round, status, winner_side, ended_at, code, next_match_id, next_match_side) 
+           VALUES ($1, $2, $3, $4, ${endedAt ? 'now()' : 'NULL'}, $5, $6, $7) 
+           RETURNING id`,
+          [eventId, roundName, status, winnerSide, matchCode, nextMatchId, nextMatchSide]
         );
-        if (playerB.partner_id) {
-          await client.query(
-            `INSERT INTO match_participants (match_id, side, player_id, seed) VALUES ($1, 'B', $2, $3)`,
-            [matchId, playerB.partner_id, playerB.seed]
-          );
+        const matchId = matchRes.rows[0].id;
+        createdMatchIds[`${r}-${i}`] = matchId;
+        totalMatchesCreated++;
+
+        // Insert initial participants for Round 1
+        if (r === 1) {
+          const playerA = slots[i * 2];
+          const playerB = slots[i * 2 + 1];
+          const isByeA = playerA === 'BYE' || playerA === null;
+          const isByeB = playerB === 'BYE' || playerB === null;
+
+          if (!isByeA) {
+            await client.query(
+              `INSERT INTO match_participants (match_id, side, player_id, seed) VALUES ($1, 'A', $2, $3)`,
+              [matchId, playerA.player_id, playerA.seed]
+            );
+            if (playerA.partner_id) {
+              await client.query(
+                `INSERT INTO match_participants (match_id, side, player_id, seed) VALUES ($1, 'A', $2, $3)`,
+                [matchId, playerA.partner_id, playerA.seed]
+              );
+            }
+          }
+
+          if (!isByeB) {
+            await client.query(
+              `INSERT INTO match_participants (match_id, side, player_id, seed) VALUES ($1, 'B', $2, $3)`,
+              [matchId, playerB.player_id, playerB.seed]
+            );
+            if (playerB.partner_id) {
+              await client.query(
+                `INSERT INTO match_participants (match_id, side, player_id, seed) VALUES ($1, 'B', $2, $3)`,
+                [matchId, playerB.partner_id, playerB.seed]
+              );
+            }
+          }
+
+          // If completed (due to BYE), auto-advance winner to next round
+          if (status === 'completed' && winnerSide && nextMatchId) {
+            await advanceWinner(client, matchId, winnerSide);
+          }
         }
       }
     }
 
     await client.query('COMMIT');
-    return { matchesGenerated: matchCount };
+    return { matchesGenerated: totalMatchesCreated };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

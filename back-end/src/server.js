@@ -2,6 +2,9 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
+import { createServer } from 'http';
+import { Server as SocketServer } from 'socket.io';
+import { initSocket } from './config/socket.js';
 
 import authRoutes from './modules/auth/auth.routes.js';
 import peopleRoutes from './modules/people/people.routes.js';
@@ -11,6 +14,7 @@ import participationRoutes from './modules/participation/participation.routes.js
 import notificationRoutes from './modules/notification/notification.routes.js';
 import paymentRoutes from './modules/payment/payment.routes.js';
 import reportingRoutes from './modules/reporting/reporting.routes.js';
+import systemConfigRoutes from './modules/system_config/system_config.routes.js';
 import { notFound, errorHandler } from './middleware/error.js';
 import { swaggerSpec } from './config/swagger.js';
 
@@ -34,10 +38,14 @@ app.use('/api/participation', participationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/reports', reportingRoutes);
+app.use('/api/config', systemConfigRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
 
-app.listen(port, () => {
+const server = createServer(app);
+initSocket(server, SocketServer);
+
+server.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
