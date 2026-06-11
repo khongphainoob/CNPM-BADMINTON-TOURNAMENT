@@ -1,32 +1,32 @@
 import { z } from 'zod';
 
 export const createMatchSchema = z.object({
-  eventId: z.number().int().positive(),
+  eventId: z.coerce.number().int().positive(),
   round: z.string().optional(),
-  courtId: z.number().int().positive().optional(),
-  refereeId: z.number().int().positive().optional(),
+  courtId: z.coerce.number().int().positive().optional(),
+  refereeId: z.coerce.number().int().positive().optional(),
   scheduledAt: z.string().optional(),
   code: z.string().optional()
 });
 
 export const updateMatchSchema = z.object({
-  courtId: z.number().int().positive().optional(),
-  refereeId: z.number().int().positive().optional(),
+  courtId: z.coerce.number().int().positive().optional(),
+  refereeId: z.coerce.number().int().positive().optional(),
   scheduledAt: z.string().optional(),
   status: z.enum(['upcoming', 'live', 'completed', 'cancelled', 'walkover']).optional()
 });
 
 export const scheduleMatchSchema = z.object({
-  courtId: z.number().int().positive(),
+  courtId: z.coerce.number().int().positive(),
   scheduledAt: z.string(),
-  refereeId: z.number().int().positive().optional(),
-  estimatedDurationMins: z.number().int().positive().optional()
+  refereeId: z.coerce.number().int().positive().optional(),
+  estimatedDurationMins: z.coerce.number().int().positive().optional()
 });
 
 export const addMatchParticipantSchema = z.object({
   side: z.enum(['A', 'B']),
-  playerId: z.number().int().positive(),
-  seed: z.number().int().positive().optional()
+  playerId: z.coerce.number().int().positive(),
+  seed: z.coerce.number().int().positive().optional()
 });
 
 export const addSetScoreSchema = z.object({

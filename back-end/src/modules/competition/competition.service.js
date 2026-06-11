@@ -302,6 +302,7 @@ export async function setMatchResult(id, { resultType, winnerSide, note }) {
   }
 
   return result.rows[0];
+}
 
 export async function addMatchParticipant(matchId, { side, playerId, seed }) {
   const result = await query(
@@ -556,29 +557,6 @@ export async function generateRandomDraw(eventId) {
   }
 }
 
-// Insert the winning side's player(s) into the linked next match. Idempotent via ON CONFLICT.
-// `executor` is anything with a .query() method (a pg client or the query helper wrapper).
-async function advanceWinner(executor, matchId) {
-  const info = await executor.query(
-    `SELECT next_match_id, next_slot, winner_side FROM matches WHERE id = $1`,
-    [matchId]
-  );
-  const row = info.rows[0];
-  if (!row || !row.next_match_id || !row.winner_side) return;
-
-  const winners = await executor.query(
-    `SELECT player_id, seed FROM match_participants WHERE match_id = $1 AND side = $2`,
-    [matchId, row.winner_side]
-  );
-  for (const w of winners.rows) {
-    await executor.query(
-      `INSERT INTO match_participants (match_id, side, player_id, seed)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (match_id, side, player_id) DO NOTHING`,
-      [row.next_match_id, row.next_slot, w.player_id, w.seed]
-    );
-  }
-}
 
 function roundNameForSize(size) {
   switch (size) {

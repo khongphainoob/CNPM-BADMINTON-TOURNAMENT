@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 export const registerParticipantSchema = z.object({
-  playerId: z.number().int().positive().optional(),
-  partnerId: z.number().int().positive().optional(),
-  seed: z.number().int().positive().optional()
+  playerId: z.coerce.number().int().positive().optional(),
+  partnerId: z.coerce.number().int().positive().optional(),
+  seed: z.coerce.number().int().positive().optional()
 });
 
 export const updateParticipantStatusSchema = z.object({
@@ -11,5 +11,5 @@ export const updateParticipantStatusSchema = z.object({
 });
 
 export const assignSeedSchema = z.object({
-  seed: z.number().int().positive()
+  seed: z.coerce.number().int().positive()
 });
