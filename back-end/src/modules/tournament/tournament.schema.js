@@ -22,7 +22,7 @@ export const createEventSchema = z.object({
   label: z.string().optional(),
   maxSets: z.number().int().min(1).max(5).default(3),
   pointsPerSet: z.number().int().min(11).max(30).default(21),
-  contentType: z.enum(['singles', 'doubles', 'mixed_doubles']).optional(),
+  contentType: z.enum(['singles', 'doubles', 'mixed', 'mixed_doubles']).optional(),
   gender: z.enum(['male', 'female', 'mixed', 'open']).optional(),
   ageGroup: z.string().optional(),
   maxParticipants: z.number().int().min(2).max(512).optional(),
