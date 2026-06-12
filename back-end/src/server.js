@@ -49,3 +49,15 @@ initSocket(server, SocketServer);
 server.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+
+const shutdown = (signal) => {
+  console.log(`\n${signal} received, closing server on port ${port}...`);
+  server.close(() => {
+    console.log('Server closed.');
+    process.exit(0);
+  });
+  // Force exit if not closed within 5s
+  setTimeout(() => process.exit(1), 5000).unref();
+};
+
+['SIGINT', 'SIGTERM', 'SIGHUP'].forEach((sig) => process.on(sig, () => shutdown(sig)));

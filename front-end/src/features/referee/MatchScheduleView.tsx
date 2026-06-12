@@ -63,15 +63,15 @@ export default function MatchScheduleView() {
                       <div style={{ fontSize: 14, fontWeight: 600 }}>{m.a} vs {m.b}</div>
                       
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--line)', paddingTop: 10 }}>
-                        <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-                          <Icon name="user" size={12} style={{ marginRight: 4 }} /> 
-                          Chưa có TT
+                        <div style={{ fontSize: 12, color: m.umpire ? 'var(--ink)' : 'var(--ink-3)', fontWeight: m.umpire ? 600 : 400 }}>
+                          <Icon name="user" size={12} style={{ marginRight: 4 }} />
+                          {m.umpire || 'Chưa có TT'}
                         </div>
-                        <button 
+                        <button
                           onClick={() => setAssignMatch(m)}
-                          style={{ padding: '6px 10px', borderRadius: 6, border: 'none', background: 'var(--ink)', color: 'white', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                          style={{ padding: '6px 10px', borderRadius: 6, border: 'none', background: m.umpire ? 'var(--paper-2)' : 'var(--ink)', color: m.umpire ? 'var(--ink)' : 'white', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
                         >
-                          Gán TT
+                          {m.umpire ? 'Đổi TT' : 'Gán TT'}
                         </button>
                       </div>
                     </div>
@@ -91,6 +91,7 @@ export default function MatchScheduleView() {
       {assignMatch && (
         <MatchAssignmentModal 
           matchId={assignMatch.id}
+          currentRefereeId={assignMatch.refereeId}
           matchDetails={{
             title: `${assignMatch.cat} - ${assignMatch.round}`,
             date: 'Hôm nay',

@@ -75,6 +75,7 @@ export const LIVE_MATCHES: LiveMatch[] = []
 
 export type UpcomingMatch = {
   id: number; t: string; court: number; cat: string; round: string; a: string; b: string
+  umpire?: string; refereeId?: number | null
 }
 export const UPCOMING: UpcomingMatch[] = []
 

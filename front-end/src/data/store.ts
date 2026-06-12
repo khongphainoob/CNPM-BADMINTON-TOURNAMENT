@@ -512,10 +512,26 @@ export async function fetchMatches(tournamentId?: number | string) {
             round: m.round || '',
             a: pAName,
             b: pBName,
+            umpire: m.referee_name || '',
+            refereeId: m.referee_id || null,
           })
         }
       })
-      return { ...prev, liveMatches: live, upcomingMatches: upc }
+      // Count active assignments per referee (live + upcoming) for overload warnings
+      const counts: Record<string, number> = {}
+      items.forEach((m: any) => {
+        if (m.referee_id && (m.status === 'live' || m.status === 'upcoming')) {
+          const key = String(m.referee_id)
+          counts[key] = (counts[key] || 0) + 1
+        }
+      })
+      const referees = prev.referees.map(r => ({
+        ...r,
+        assigned: counts[r.id] || 0,
+        today: counts[r.id] || 0,
+      }))
+
+      return { ...prev, liveMatches: live, upcomingMatches: upc, referees }
     })
   } catch (e) {
     console.error('Failed to fetch matches', e)

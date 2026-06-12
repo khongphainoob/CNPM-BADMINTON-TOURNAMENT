@@ -14,14 +14,15 @@ type Props = {
     court: string
     playersClubs: string[]
   }
+  currentRefereeId?: number | null
   onClose: () => void
   onSave: (data: any) => void
 }
 
-export default function MatchAssignmentModal({ matchId, matchDetails, onClose, onSave }: Props) {
+export default function MatchAssignmentModal({ matchId, matchDetails, currentRefereeId, onClose, onSave }: Props) {
   const { session } = useAuth()
   const { referees } = useStore()
-  const [refId, setRefId] = useState('')
+  const [refId, setRefId] = useState(currentRefereeId ? String(currentRefereeId) : '')
   const [role, setRole] = useState('main_referee')
   const [status, setStatus] = useState('pending')
   const [notes, setNotes] = useState('')

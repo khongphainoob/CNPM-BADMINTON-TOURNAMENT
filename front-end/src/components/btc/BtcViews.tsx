@@ -18,12 +18,12 @@ export { FinanceView } from '../../features/finance/FinanceView'
 import {
   useStore,
   addMatch, addStock, addNewInventoryItem, issueShuttles,
-  assignReferee, addNewsItem,
+  assignReferee, addNewsItem, fetchMatches,
   approveAthleteProfile, rejectAthleteProfile,
   updateTournamentName, updateTournamentVenue,
   type InventoryItem, type Referee,
 } from '../../data/store'
-import { tournamentApi } from '../../data/api'
+import { tournamentApi, competitionApi } from '../../data/api'
 import type { LiveMatch, Athlete } from '../../data/constants'
 
 // ── Shared sub-components ────────────────────────────────────────────────────
@@ -260,14 +260,20 @@ function AssignRefereeModal({ referee, onClose }: { referee: Referee; onClose: (
   const [matchId, setMatchId] = useState<number | ''>(allMatches[0]?.id ?? '')
   const [role, setRole] = useState('main')
 
-  const submit = () => {
+  const submit = async () => {
     if (!matchId) { toast('Chọn trận đấu.', 'error'); return }
     if (referee.assigned >= 4) {
       if (!confirm('Cảnh báo: Trọng tài này đã phân công 4 trận. Bạn có chắc chắn muốn tiếp tục?')) return
     }
-    assignReferee(referee.id, Number(matchId)) // Assume API accepts role in future
-    toast(`Đã phân công ${referee.name} làm ${role === 'main' ? 'Trọng tài chính' : role === 'line' ? 'Trọng tài biên' : 'Trọng tài giao bóng'} cho trận #${matchId}`)
-    onClose()
+    try {
+      await competitionApi.updateMatch(Number(matchId), { refereeId: Number(referee.id) })
+      assignReferee(referee.id, Number(matchId)) // optimistic local count update
+      await fetchMatches()
+      toast(`Đã phân công ${referee.name} làm ${role === 'main' ? 'Trọng tài chính' : role === 'line' ? 'Trọng tài biên' : 'Trọng tài giao bóng'} cho trận #${matchId}`)
+      onClose()
+    } catch (e: any) {
+      toast(e.response?.data?.error?.message || 'Lỗi phân công trọng tài', 'error')
+    }
   }
 
   const isOverloaded = referee.assigned >= 4

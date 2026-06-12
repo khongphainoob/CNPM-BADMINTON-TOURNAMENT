@@ -9,6 +9,16 @@ import Icon from '../shared/Icon'
 import { btnGhost, btnPrimary } from '../shared/tokens'
 import { StatCard } from '../btc/BtcViews'
 
+// Hạng mục cho phép theo giới tính: nam → MS/MD/XD, nữ → WS/WD/XD
+function genderAllowsCategory(gender: string, code?: string): boolean {
+  if (!gender || !code) return true
+  const c = code.toUpperCase()
+  if (c === 'XD') return true
+  if (gender === 'M') return ['MS', 'MD'].includes(c)
+  if (gender === 'F') return ['WS', 'WD'].includes(c)
+  return true
+}
+
 export function useAthleteProfile(userId: number | string | undefined, role?: string) {
   const [me, setMe] = useState<any>({})
   const [loading, setLoading] = useState(true)
@@ -51,6 +61,7 @@ export function useAthleteProfile(userId: number | string | undefined, role?: st
               dob: p.dob || '2000-01-01',
               cccd: p.cccd || '',
               photoUrl: p.photo_url || '',
+              gender: p.gender || '',
               clubId: p.club_id
             })
           } else {
@@ -240,7 +251,7 @@ export function AthleteRegistration({ me }: { me: any }) {
             </div>
             <div>
               <div className="caps" style={{ marginBottom: 4 }}>Hạng mục thi đấu</div>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>{events.length > 0 ? events.map(e => e.label).join(', ') : 'Đang tải...'}</div>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>{events.length > 0 ? events.map(e => e.label || e.category_label || e.category_code).join(', ') : 'Đang tải...'}</div>
             </div>
           </div>
         </div>
@@ -260,15 +271,19 @@ export function AthleteRegistration({ me }: { me: any }) {
       <h2 className="serif" style={{ fontSize: 24, margin: '20px 0' }}>Form Đăng ký: {selectedTour.name}</h2>
       <RegistrationForm 
         currentUser={{ name: me.name, email: '' }}
-        availableEvents={events.map(e => ({ id: String(e.id), name: e.label, type: e.is_doubles ? 'doubles' : 'singles' }))}
+        availableEvents={events.filter(e => genderAllowsCategory(me.gender, e.category_code)).map(e => ({ id: String(e.id), name: e.label || e.category_label || e.category_code, type: e.is_doubles ? 'doubles' : 'singles' }))}
         availablePartners={partners.filter(p => p.id !== me.dbId).map(p => ({ id: String(p.id), name: p.name, email: p.code }))}
         onSubmit={async (data) => {
           try {
             if (me.dbId) {
               await peopleApi.updatePlayer(me.dbId, { cccd: data.cccd })
             } else {
+              if (!me.gender) {
+                alert('Vui lòng cập nhật giới tính trong Hồ sơ cá nhân trước khi đăng ký.')
+                return
+              }
               // Create player if not exists
-              await peopleApi.createPlayer({ name: me.name, cccd: data.cccd, gender: 'M', clubId: 1 })
+              await peopleApi.createPlayer({ name: me.name, cccd: data.cccd, gender: me.gender, clubId: 1 })
             }
             await participationApi.register(data.eventId, { partnerId: data.partnerId ? Number(data.partnerId) : undefined })
             alert('Đăng ký thành công! Vui lòng chờ BTC duyệt.')
@@ -297,16 +312,20 @@ function FormField({ label, value }: { label: string; value: string }) {
 
 export function AthleteProfile({ me }: { me: any }) {
   const { register, handleSubmit } = useForm({
-    defaultValues: { name: me.name, dob: me.dob, cccd: me.cccd, clubId: me.clubId || 1 }
+    defaultValues: { name: me.name, dob: me.dob, cccd: me.cccd, clubId: me.clubId || 1, gender: me.gender || '' }
   })
 
   const submit = async (data: any) => {
+    if (!data.gender) {
+      alert('Vui lòng chọn giới tính.')
+      return
+    }
     try {
       if (me.dbId) {
         await peopleApi.updatePlayer(me.dbId, data)
         alert('Cập nhật hồ sơ thành công! Vui lòng tải lại trang.')
       } else {
-        await peopleApi.createPlayer({ ...data, gender: 'M' })
+        await peopleApi.createPlayer(data)
         alert('Tạo hồ sơ thành công! Vui lòng tải lại trang.')
       }
     } catch (e: any) {
@@ -330,6 +349,14 @@ export function AthleteProfile({ me }: { me: any }) {
           <label>
             <div className="caps" style={{ marginBottom: 4 }}>CCCD / CMND</div>
             <input {...register('cccd')} placeholder="Gồm 12 chữ số" style={{ padding: '8px 12px', borderRadius: 4, border: '1px solid var(--line)', width: '100%' }} />
+          </label>
+          <label>
+            <div className="caps" style={{ marginBottom: 4 }}>Giới tính</div>
+            <select {...register('gender')} style={{ padding: '8px 12px', borderRadius: 4, border: '1px solid var(--line)', width: '100%' }}>
+              <option value="">-- Chọn --</option>
+              <option value="M">Nam</option>
+              <option value="F">Nữ</option>
+            </select>
           </label>
           <label>
             <div className="caps" style={{ marginBottom: 4 }}>Ngày sinh</div>

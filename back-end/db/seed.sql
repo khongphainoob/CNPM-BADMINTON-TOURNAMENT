@@ -48,7 +48,8 @@ INSERT INTO users (email, phone, password_hash, name, primary_role_id, status) V
   ('truongdoan@shuttleops.vn',    '0955555555', '$2b$10$AZIiyQSaMGTRZsjlVyYrleaKe.ijttZLse1T7qD2ivCC/sa9mE6aG', 'Trưởng Đoàn',      (SELECT id FROM roles WHERE code='coach'),     'approved'),
   ('khangia@shuttleops.vn',       NULL,         '$2b$10$qKZwjMM5hedQjPXCQP5x8u53EVYOddiRLobHhlZ43w/ocI0q9Bovm', 'Khán giả',        (SELECT id FROM roles WHERE code='spectator'), 'approved'),
   ('tranvanminh@example.com',     '0934567890', '$2b$10$4b0aV7MlmFfdTZX2fboT2.Nm/dtuQBSBsMmeM8w8nryPZuiUVKfJ.', 'Trần Văn Minh',   NULL,                                          'pending'),
-  ('lethilan@example.com',        '0945678901', '$2b$10$4b0aV7MlmFfdTZX2fboT2.Nm/dtuQBSBsMmeM8w8nryPZuiUVKfJ.', 'Lê Thị Lan',      NULL,                                          'pending');
+  ('lethilan@example.com',        '0945678901', '$2b$10$4b0aV7MlmFfdTZX2fboT2.Nm/dtuQBSBsMmeM8w8nryPZuiUVKfJ.', 'Lê Thị Lan',      NULL,                                          'pending'),
+  ('john@shuttleops.vn',          '0999000001', '$2b$10$AZIiyQSaMGTRZsjlVyYrleaKe.ijttZLse1T7qD2ivCC/sa9mE6aG', 'John',             (SELECT id FROM roles WHERE code='athlete'),   'approved');
 
 -- Gán user_roles (mirror primary_role)
 INSERT INTO user_roles (user_id, role_id)
@@ -128,6 +129,9 @@ INSERT INTO players (code, club_id, name, gender, dob, rating, tier, profile_sta
 UPDATE players SET user_id = (SELECT id FROM users WHERE email='nguyenhaidang@shuttleops.vn')
 WHERE code = 'A-0142';
 
+INSERT INTO players (code, club_id, user_id, name, gender, dob, rating, tier, profile_status) VALUES
+  ('A-0999', (SELECT id FROM clubs WHERE code='HCM'), (SELECT id FROM users WHERE email='john@shuttleops.vn'), 'John', 'M', '2000-06-15', 1500, 'C', 'approved');
+
 INSERT INTO referees (code, user_id, name, cert, phone) VALUES
   ('R-01', (SELECT id FROM users WHERE email='lequanghuy@shuttleops.vn'), 'Lê Quang Huy',    'QG_A', '0912345678'),
   ('R-02', NULL, 'Nguyễn Hồng Sơn',  'QG_A', NULL),
@@ -139,8 +143,8 @@ INSERT INTO referees (code, user_id, name, cert, phone) VALUES
 -- -----------------------------------------------------------------------------
 -- M5: event_participants — đăng ký vài người vào event MS để demo
 -- -----------------------------------------------------------------------------
-INSERT INTO event_participants (event_id, player_id, seed)
-SELECT e.id, p.id, CASE p.code WHEN 'A-0142' THEN 3 WHEN 'A-0145' THEN 5 END
+INSERT INTO event_participants (event_id, player_id, seed, status)
+SELECT e.id, p.id, CASE p.code WHEN 'A-0142' THEN 3 WHEN 'A-0145' THEN 5 END, 'approved'
 FROM events e
 JOIN tournaments t ON t.id = e.tournament_id
 JOIN players p ON p.code IN ('A-0142','A-0145','A-0147','A-0201')
@@ -261,8 +265,8 @@ INSERT INTO players (code, club_id, name, gender, dob, rating, tier, profile_sta
   ('A-0325', (SELECT id FROM clubs WHERE code='HP'),  'Bùi Diễm Quỳnh',  'F', '2002-11-21', 1640, 'C', 'approved');
 
 -- Đăng ký 12 nam vào Đơn nam (MS); A-0301 hạt giống 1, A-0302 hạt giống 2 (còn lại không seed)
-INSERT INTO event_participants (event_id, player_id, seed)
-SELECT e.id, p.id, CASE p.code WHEN 'A-0301' THEN 1 WHEN 'A-0302' THEN 2 END
+INSERT INTO event_participants (event_id, player_id, seed, status)
+SELECT e.id, p.id, CASE p.code WHEN 'A-0301' THEN 1 WHEN 'A-0302' THEN 2 END, 'approved'
 FROM events e
 JOIN tournaments t ON t.id = e.tournament_id
 JOIN players p ON p.code IN ('A-0301','A-0302','A-0303','A-0304','A-0305','A-0306',
@@ -270,8 +274,8 @@ JOIN players p ON p.code IN ('A-0301','A-0302','A-0303','A-0304','A-0305','A-030
 WHERE t.code='VNBAD-2026-03' AND e.category_code='MS';
 
 -- Đăng ký 6 nữ vào Đơn nữ (WS) — chưa bốc thăm để demo ghép cặp thủ công
-INSERT INTO event_participants (event_id, player_id, seed)
-SELECT e.id, p.id, NULL
+INSERT INTO event_participants (event_id, player_id, seed, status)
+SELECT e.id, p.id, NULL, 'approved'
 FROM events e
 JOIN tournaments t ON t.id = e.tournament_id
 JOIN players p ON p.code IN ('A-0320','A-0321','A-0322','A-0323','A-0324','A-0325')

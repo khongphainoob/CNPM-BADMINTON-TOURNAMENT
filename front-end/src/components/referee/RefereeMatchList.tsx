@@ -1,20 +1,33 @@
 import { useState, useEffect } from 'react'
-import { competitionApi } from '../../data/api'
+import { competitionApi, peopleApi } from '../../data/api'
 import { useStore } from '../../data/store'
+import { useAuth } from '../../data/auth'
 
 export default function RefereeMatchList({ onSelect }: { onSelect: (m: any) => void }) {
   const activeTournamentId = useStore(state => state.activeTournamentId)
+  const { session } = useAuth()
   const [matches, setMatches] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!activeTournamentId) return
-    // Fetch upcoming matches for active tournament
-    competitionApi.listMatches({ status: 'upcoming', tournament_id: activeTournamentId }).then(res => {
-      setMatches((res.data || []).filter((m: any) => m.court_id != null))
+    if (!activeTournamentId || !session?.userId) return
+    setLoading(true)
+    const load = async () => {
+      // Map the logged-in user to their referee record
+      const referees = await peopleApi.listReferees()
+      const me = (referees || []).find((r: any) => String(r.user_id) === String(session.userId))
+      if (!me) { setMatches([]); setLoading(false); return }
+      // Fetch only matches assigned to this referee
+      const res = await competitionApi.listMatches({
+        status: 'upcoming',
+        tournament_id: activeTournamentId,
+        refereeId: me.id,
+      })
+      setMatches(res.data || [])
       setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [activeTournamentId])
+    }
+    load().catch(() => setLoading(false))
+  }, [activeTournamentId, session?.userId])
 
   return (
     <div style={{ padding: '24px', background: 'var(--color-surface)', height: '100dvh', overflowY: 'auto', fontFamily: 'var(--font-body)' }}>
